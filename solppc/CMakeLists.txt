@@ -4,10 +4,10 @@ set(
 	main.cpp
 )
 
-include_directories(${PROJECT_SOURCE_DIR}/solidity)
+include_directories(AFTER ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/solidity)
 
 add_executable(solppc ${sources})
-target_link_libraries(solppc PRIVATE solidity Boost::boost Boost::program_options)
+target_link_libraries(solppc PUBLIC solidity Boost::boost Boost::program_options)
 
 include(GNUInstallDirs)
 install(TARGETS solppc DESTINATION "${CMAKE_INSTALL_BINDIR}")

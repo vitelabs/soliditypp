@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 /**
- * @author Lefteris <lefteris@ethdev.com>
- * @author Gav Wood <g@ethdev.com>
- * @date 2014
- * Solidity command line interface.
+ * @author Charles <charles@vite.org>
+ * @date 2021
+ * Solidity++ command line interface.
+ * Solidity++ is modified from Solidity under the terms of the GNU General Public License.
  */
 #include "CommandLineInterface.h"
 

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 /**
- * @author Charles Liu <charles@vite.org>
+ * @author Charles <charles@vite.org>
  * @date 2021
  * Solidity++ commandline compiler.
+ * Solidity++ is modified from Solidity under the terms of the GNU General Public License.
  */
 
 #include "CommandLineInterface.h"

@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 3.13.0)
 
-set(ETH_CMAKE_DIR   "${CMAKE_CURRENT_LIST_DIR}/solidity/cmake"   CACHE PATH "The the path to the cmake directory")
-list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
+set(ETH_CMAKE_DIR   "${CMAKE_CURRENT_LIST_DIR}/solidity/cmake"   CACHE PATH "The the path to the solidity cmake directory")
+set(VITE_CMAKE_DIR   "${CMAKE_CURRENT_LIST_DIR}/cmake"   CACHE PATH "The the path to the soliditypp cmake directory")
+list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR} ${VITE_CMAKE_DIR})
 
 project(solidity VERSION 0.8.0 LANGUAGES C CXX)
+
+enable_testing()
 
 # Set the build type, if none was specified.
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -15,6 +18,8 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 	set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel" FORCE)
 	set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif()
+
+include(ViteUtils)
 
 include(EthToolchains)
 
@@ -52,6 +57,7 @@ include(EthOptions)
 
 configure_project(TESTS)
 
+# include_directories(AFTER ${PROJECT_SOURCE_DIR}/solidity)
 
 add_subdirectory(libsolutil)
 add_subdirectory(liblangutil)
@@ -60,3 +66,5 @@ add_subdirectory(libevmasm)
 add_subdirectory(libsmtutil)
 add_subdirectory(libsolidity)
 add_subdirectory(solppc)
+
+add_subdirectory(test)
