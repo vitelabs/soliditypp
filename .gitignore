@@ -31,7 +31,7 @@ prerelease.txt
 *.app
 
 # Build directory
-/build*
+build/
 emscripten_build/
 docs/_build
 __pycache__
