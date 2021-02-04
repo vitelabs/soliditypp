@@ -208,6 +208,11 @@ namespace solidity::langutil
 	K(SubDay, "days", 0)                                               \
 	K(SubWeek, "weeks", 0)                                             \
 	K(SubYear, "years", 0)                                             \
+	\
+	/* Vite subdenominations */                                        \
+	K(SubAttov, "attov", 0)											   \
+	K(SubVite, "vite", 0)                                              \
+	\
 	/* type keywords*/                                                 \
 	K(Int, "int", 0)                                                   \
 	K(UInt, "uint", 0)                                                 \

@@ -1,15 +1,14 @@
-#define BOOST_TEST_MODULE ParserTest
+#define BOOST_TEST_INCLUDEED
+#include <boost/test/unit_test.hpp>
 
 #include <liblangutil/Scanner.h>
 #include <libsolidity/parsing/Parser.h>
 #include <liblangutil/ErrorReporter.h>
 
-#include <boost/test/unit_test.hpp>
-
 using namespace std;
 using namespace solidity::langutil;
 
-namespace solidity::frontend::test
+namespace solidity::frontend::test::soliditypp
 {
     ASTPointer<ContractDefinition> parseText(std::string const& _source, ErrorList& _errors, bool errorRecovery = false)
     {
@@ -49,32 +48,7 @@ namespace solidity::frontend::test
         return true;
     }
 
-    BOOST_AUTO_TEST_SUITE(ParserTest)
-
-    BOOST_AUTO_TEST_CASE(reserved_keywords)
-    {
-        BOOST_CHECK(!TokenTraits::isReservedKeyword(Token::Identifier));
-        BOOST_CHECK(TokenTraits::isReservedKeyword(Token::After));
-        BOOST_CHECK(!TokenTraits::isReservedKeyword(Token::Unchecked));
-        BOOST_CHECK(TokenTraits::isReservedKeyword(Token::Var));
-        BOOST_CHECK(TokenTraits::isReservedKeyword(Token::Reference));
-        BOOST_CHECK(!TokenTraits::isReservedKeyword(Token::Illegal));
-    }
-
-    BOOST_AUTO_TEST_CASE(variable_definition)
-    {
-        char const* text = R"(
-            contract test {
-                function fun(uint256 a) {
-                    uint b;
-                    uint256 c;
-                    mapping(address=>bytes32) d;
-                    customtype varname;
-                }
-            }
-        )";
-        BOOST_CHECK(successParse(text));
-    }
+    BOOST_AUTO_TEST_SUITE(SolidityppParserTest)
 
     BOOST_AUTO_TEST_CASE(soliditypp_message_definition)
     {

@@ -55,7 +55,7 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonImporter.h
 	${ORIGINAL_SOURCE_DIR}/ast/ASTVisitor.h
 	${ORIGINAL_SOURCE_DIR}/ast/ExperimentalFeatures.h
-	${ORIGINAL_SOURCE_DIR}/ast/Types.cpp
+	ast/Types.cpp
 	${ORIGINAL_SOURCE_DIR}/ast/Types.h
 	${ORIGINAL_SOURCE_DIR}/ast/TypeProvider.cpp
 	${ORIGINAL_SOURCE_DIR}/ast/TypeProvider.h

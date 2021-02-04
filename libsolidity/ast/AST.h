@@ -2146,7 +2146,9 @@ public:
 		Hour = static_cast<int>(Token::SubHour),
 		Day = static_cast<int>(Token::SubDay),
 		Week = static_cast<int>(Token::SubWeek),
-		Year = static_cast<int>(Token::SubYear)
+		Year = static_cast<int>(Token::SubYear),
+		Attov = static_cast<int>(Token::SubAttov),
+		Vite = static_cast<int>(Token::SubVite)
 	};
 	Literal(
 		int64_t _id,
