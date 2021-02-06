@@ -34,7 +34,7 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/analysis/Scoper.h
 	${ORIGINAL_SOURCE_DIR}/analysis/StaticAnalyzer.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/StaticAnalyzer.h
-	${ORIGINAL_SOURCE_DIR}/analysis/SyntaxChecker.cpp
+	analysis/SyntaxChecker.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/SyntaxChecker.h
 	${ORIGINAL_SOURCE_DIR}/analysis/TypeChecker.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/TypeChecker.h

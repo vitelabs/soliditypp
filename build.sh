@@ -14,9 +14,9 @@ mkdir -p "${BUILDDIR}"
 cd "${BUILDDIR}"
 
 cmake .. -DCMAKE_BUILD_TYPE="$BUILD_TYPE" "${@:2}"
-make -j6
+make -j10
 
-if [[ "${CI}" == "" ]]; then
-	echo "Installing ..."
-	sudo make install
-fi
+# if [[ "${CI}" == "" ]]; then
+# 	echo "Installing ..."
+# 	sudo make install
+# fi
