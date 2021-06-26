@@ -23,6 +23,8 @@ set(sources
     solidity/SolidityParser.cpp
     soliditypp/ScannerTest.cpp
     soliditypp/ParserTest.cpp
+    libsolutil/Keccak256.cpp
+    libsolutil/Blake2b.cpp
 )
 
 include_directories(AFTER ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/solidity)
