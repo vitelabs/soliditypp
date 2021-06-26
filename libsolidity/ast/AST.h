@@ -851,7 +851,8 @@ public:
 		solAssert(!isFree(), "");
 		return isOrdinary() && visibility() >= Visibility::Public;
 	}
-	bool isPartOfExternalInterface() const override { return isOrdinary() && isPublic(); }
+	// Solidity++: onMessage function is a part of external interface
+	bool isPartOfExternalInterface() const override { return (isOrdinary() || isOnMessage()) && isPublic(); }
 
 	/// @returns the external signature of the function
 	/// That consists of the name of the function followed by the types of the

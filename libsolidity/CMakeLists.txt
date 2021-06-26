@@ -40,7 +40,7 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/analysis/TypeChecker.h
 	${ORIGINAL_SOURCE_DIR}/analysis/ViewPureChecker.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/ViewPureChecker.h
-	${ORIGINAL_SOURCE_DIR}/ast/AST.cpp
+	ast/AST.cpp
 	ast/AST.h
 	${ORIGINAL_SOURCE_DIR}/ast/AST_accept.h
 	${ORIGINAL_SOURCE_DIR}/ast/ASTAnnotations.cpp

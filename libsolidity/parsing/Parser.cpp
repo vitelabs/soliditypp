@@ -189,7 +189,7 @@ ASTPointer<PragmaDirective> Parser::parsePragmaDirective()
 	nodeFactory.markEndPosition();
 	expectToken(Token::Semicolon);
 
-	if (literals.size() >= 1 && literals[0] == "solidity")
+	if (literals.size() >= 1 && (literals[0] == "solidity" || literals[0] == "soliditypp"))
 	{
 		parsePragmaVersion(
 			nodeFactory.location(),
@@ -592,13 +592,13 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 		else
 			name = expectIdentifierToken();
 	}
-	// Solitity++: parse message listener function
+	// Solidity++: parse message listener function
 	else if(kind == Token::OnMessage)
 	{
 		m_scanner->next();
 		name = expectIdentifierToken();
 	}
-	// Solitity++: parse offchain getter function 
+	// Solidity++: parse offchain getter function 
 	else if(kind == Token::Getter)
 	{
 		m_scanner->next();
@@ -612,6 +612,12 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 	}
 
 	FunctionHeaderParserResult header = parseFunctionHeader(false);
+
+	// Solidity++: the visibility of onMessage is external
+	if(kind == Token::OnMessage)
+	{
+		header.visibility = Visibility::External;
+	}
 
 	ASTPointer<Block> block;
 	nodeFactory.markEndPosition();

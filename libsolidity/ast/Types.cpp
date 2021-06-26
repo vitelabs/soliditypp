@@ -17,7 +17,7 @@
 #include <libsolutil/CommonData.h>
 #include <libsolutil/CommonIO.h>
 #include <libsolutil/FunctionSelector.h>
-#include <libsolutil/Keccak256.h>
+#include <libsolutil/Blake2.h>
 #include <libsolutil/UTF8.h>
 
 #include <boost/algorithm/string.hpp>
@@ -3408,7 +3408,8 @@ u256 FunctionType::externalIdentifier() const
 
 string FunctionType::externalIdentifierHex() const
 {
-	return util::FixedHash<4>(util::keccak256(externalSignature())).hex();
+	// Solidity++: Use blake2b instead of Keccak256
+	return util::FixedHash<4>(util::blake2b(externalSignature())).hex();
 }
 
 bool FunctionType::isPure() const
