@@ -1,45 +1,43 @@
+set(ORIGINAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/solidity/libevmasm)
+
 set(sources
-	Assembly.cpp
-	Assembly.h
-	AssemblyItem.cpp
-	AssemblyItem.h
-	BlockDeduplicator.cpp
-	BlockDeduplicator.h
-	CommonSubexpressionEliminator.cpp
-	CommonSubexpressionEliminator.h
-	ConstantOptimiser.cpp
-	ConstantOptimiser.h
-	ControlFlowGraph.cpp
-	ControlFlowGraph.h
-	Exceptions.h
-	ExpressionClasses.cpp
-	ExpressionClasses.h
-	GasMeter.cpp
-	GasMeter.h
-	Instruction.cpp
-	Instruction.h
-	JumpdestRemover.cpp
-	JumpdestRemover.h
-	KnownState.cpp
-	KnownState.h
-	LinkerObject.cpp
-	LinkerObject.h
-	PathGasMeter.cpp
-	PathGasMeter.h
-	PeepholeOptimiser.cpp
-	PeepholeOptimiser.h
-	SemanticInformation.cpp
-	SemanticInformation.h
-	SimplificationRule.h
-	SimplificationRules.cpp
-	SimplificationRules.h
+	${ORIGINAL_SOURCE_DIR}/Assembly.cpp
+	${ORIGINAL_SOURCE_DIR}/Assembly.h
+	${ORIGINAL_SOURCE_DIR}/AssemblyItem.cpp
+	${ORIGINAL_SOURCE_DIR}/AssemblyItem.h
+	${ORIGINAL_SOURCE_DIR}/BlockDeduplicator.cpp
+	${ORIGINAL_SOURCE_DIR}/BlockDeduplicator.h
+	${ORIGINAL_SOURCE_DIR}/CommonSubexpressionEliminator.cpp
+	${ORIGINAL_SOURCE_DIR}/CommonSubexpressionEliminator.h
+	${ORIGINAL_SOURCE_DIR}/ConstantOptimiser.cpp
+	${ORIGINAL_SOURCE_DIR}/ConstantOptimiser.h
+	${ORIGINAL_SOURCE_DIR}/ControlFlowGraph.cpp
+	${ORIGINAL_SOURCE_DIR}/ControlFlowGraph.h
+	${ORIGINAL_SOURCE_DIR}/Exceptions.h
+	${ORIGINAL_SOURCE_DIR}/ExpressionClasses.cpp
+	${ORIGINAL_SOURCE_DIR}/ExpressionClasses.h
+	${ORIGINAL_SOURCE_DIR}/GasMeter.cpp
+	${ORIGINAL_SOURCE_DIR}/GasMeter.h
+	${ORIGINAL_SOURCE_DIR}/Instruction.cpp
+	${ORIGINAL_SOURCE_DIR}/Instruction.h
+	${ORIGINAL_SOURCE_DIR}/JumpdestRemover.cpp
+	${ORIGINAL_SOURCE_DIR}/JumpdestRemover.h
+	${ORIGINAL_SOURCE_DIR}/KnownState.cpp
+	${ORIGINAL_SOURCE_DIR}/KnownState.h
+	${ORIGINAL_SOURCE_DIR}/LinkerObject.cpp
+	${ORIGINAL_SOURCE_DIR}/LinkerObject.h
+	${ORIGINAL_SOURCE_DIR}/PathGasMeter.cpp
+	${ORIGINAL_SOURCE_DIR}/PathGasMeter.h
+	${ORIGINAL_SOURCE_DIR}/PeepholeOptimiser.cpp
+	${ORIGINAL_SOURCE_DIR}/PeepholeOptimiser.h
+	${ORIGINAL_SOURCE_DIR}/SemanticInformation.cpp
+	${ORIGINAL_SOURCE_DIR}/SemanticInformation.h
+	${ORIGINAL_SOURCE_DIR}/SimplificationRule.h
+	${ORIGINAL_SOURCE_DIR}/SimplificationRules.cpp
+	${ORIGINAL_SOURCE_DIR}/SimplificationRules.h
 )
 
-# Set sources as My.h -> ${PROJECT_SOURCE_DIR}/solidity/lib/My.h
-set(DIR ${PROJECT_SOURCE_DIR}/solidity/libevmasm)
-list (TRANSFORM sources PREPEND "${DIR}/")
-
-include_directories(${PROJECT_SOURCE_DIR}/solidity)
+include_directories(AFTER ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/solidity)
 
 add_library(evmasm ${sources})
 target_link_libraries(evmasm PUBLIC solutil)
