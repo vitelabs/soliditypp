@@ -568,7 +568,8 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 			m_scanner->currentToken() == Token::Constructor ||
 			m_scanner->currentToken() == Token::Fallback ||
 			m_scanner->currentToken() == Token::Receive ||
-			m_scanner->currentToken() == Token::OnMessage
+			m_scanner->currentToken() == Token::OnMessage ||
+			m_scanner->currentToken() == Token::Getter
 		)
 		{
 			std::string expected = std::map<Token, std::string>{
@@ -576,6 +577,7 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 				{Token::Fallback, "fallback function"},
 				{Token::Receive, "receive function"},
 				{Token::OnMessage, "onMessage function"},
+				{Token::OnMessage, "offchain function"},
 			}.at(m_scanner->currentToken());
 			name = make_shared<ASTString>(TokenTraits::toString(m_scanner->currentToken()));
 			string message{
@@ -617,6 +619,12 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 	if(kind == Token::OnMessage)
 	{
 		header.visibility = Visibility::External;
+	}
+
+	// Solidity++: the visibility of getter is offchain
+	if(kind == Token::OnMessage)
+	{
+		header.visibility = Visibility::Offchain;
 	}
 
 	ASTPointer<Block> block;

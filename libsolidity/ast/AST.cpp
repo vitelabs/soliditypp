@@ -90,6 +90,23 @@ map<util::FixedHash<4>, FunctionTypePointer> ContractDefinition::interfaceFuncti
 	return exportedFunctions;
 }
 
+// Solidity++: get offchain functions
+map<util::FixedHash<4>, FunctionTypePointer> ContractDefinition::offchainFunctions(bool _includeInheritedFunctions) const
+{
+	auto exportedFunctionList = offchainFunctionList(_includeInheritedFunctions);
+
+	map<util::FixedHash<4>, FunctionTypePointer> exportedFunctions;
+	for (auto const& it: exportedFunctionList)
+		exportedFunctions.insert(it);
+
+	solAssert(
+		exportedFunctionList.size() == exportedFunctions.size(),
+		"Hash collision at Function Definition Hash calculation"
+	);
+
+	return exportedFunctions;
+}
+
 FunctionDefinition const* ContractDefinition::constructor() const
 {
 	for (FunctionDefinition const* f: definedFunctions())
@@ -164,6 +181,44 @@ vector<pair<util::FixedHash<4>, FunctionTypePointer>> const& ContractDefinition:
 			for (VariableDeclaration const* v: contract->stateVariables())
 				if (v->isPartOfExternalInterface())
 					functions.push_back(TypeProvider::function(*v));
+			for (FunctionTypePointer const& fun: functions)
+			{
+				if (!fun->interfaceFunctionType())
+					// Fails hopefully because we already registered the error
+					continue;
+				string functionSignature = fun->externalSignature();
+				if (signaturesSeen.count(functionSignature) == 0)
+				{
+					signaturesSeen.insert(functionSignature);
+					// Solidity++: Use blake2b instead of Keccak256
+					util::FixedHash<4> hash(util::blake2b(functionSignature));
+					interfaceFunctionList.emplace_back(hash, fun);
+				}
+			}
+		}
+
+		return interfaceFunctionList;
+	});
+}
+
+// Solidity++: get offchain function list
+vector<pair<util::FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::offchainFunctionList(bool _includeInheritedFunctions) const
+{
+	return m_offchainFunctionList[_includeInheritedFunctions].init([&]{
+		set<string> signaturesSeen;
+		vector<pair<util::FixedHash<4>, FunctionTypePointer>> interfaceFunctionList;
+
+		for (ContractDefinition const* contract: annotation().linearizedBaseContracts)
+		{
+			if (_includeInheritedFunctions == false && contract != this)
+				continue;
+			vector<FunctionTypePointer> functions;
+			for (FunctionDefinition const* f: contract->definedFunctions())
+				if (f->isOffchain())
+					functions.push_back(TypeProvider::function(*f, FunctionType::Kind::External)); // TODO: offchain kind?
+			// for (VariableDeclaration const* v: contract->stateVariables())
+			// 	if (v->isPartOfExternalInterface())
+			// 		functions.push_back(TypeProvider::function(*v));
 			for (FunctionTypePointer const& fun: functions)
 			{
 				if (!fun->interfaceFunctionType())
@@ -292,6 +347,7 @@ FunctionTypePointer FunctionDefinition::functionType(bool _internal) const
 		case Visibility::Public:
 			return TypeProvider::function(*this, FunctionType::Kind::Internal);
 		case Visibility::External:
+		case Visibility::Offchain:
 			return {};
 		}
 	}
@@ -306,6 +362,7 @@ FunctionTypePointer FunctionDefinition::functionType(bool _internal) const
 			return {};
 		case Visibility::Public:
 		case Visibility::External:
+		case Visibility::Offchain:
 			return TypeProvider::function(*this, FunctionType::Kind::External);
 		}
 	}
@@ -676,6 +733,7 @@ FunctionTypePointer VariableDeclaration::functionType(bool _internal) const
 		return nullptr;
 	case Visibility::Public:
 	case Visibility::External:
+	case Visibility::Offchain:
 		return TypeProvider::function(*this);
 	}
 

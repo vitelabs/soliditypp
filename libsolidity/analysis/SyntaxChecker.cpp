@@ -383,7 +383,7 @@ bool SyntaxChecker::visit(FunctionDefinition const& _function)
 {
 	solAssert(_function.isFree() == (m_currentContractKind == std::nullopt), "");
 
-	if (!_function.isFree() && !_function.isConstructor() && _function.noVisibilitySpecified())
+	if (!_function.isFree() && !_function.isConstructor() && !_function.isOnMessage() && !_function.isOffchain() && _function.noVisibilitySpecified())
 	{
 		string suggestedVisibility =
 			_function.isFallback() ||

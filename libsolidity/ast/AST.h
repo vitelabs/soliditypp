@@ -498,7 +498,15 @@ public:
 	/// @returns a map of canonical function signatures to FunctionDefinitions
 	/// as intended for use by the ABI.
 	std::map<util::FixedHash<4>, FunctionTypePointer> interfaceFunctions(bool _includeInheritedFunctions = true) const;
+
+	// Solidity++: get offchain functions
+	std::map<util::FixedHash<4>, FunctionTypePointer> offchainFunctions(bool _includeInheritedFunctions = true) const;
+
 	std::vector<std::pair<util::FixedHash<4>, FunctionTypePointer>> const& interfaceFunctionList(bool _includeInheritedFunctions = true) const;
+
+	// Solidity++: get offchain function list
+	std::vector<std::pair<util::FixedHash<4>, FunctionTypePointer>> const& offchainFunctionList(bool _includeInheritedFunctions = true) const;
+
 	/// @returns the EIP-165 compatible interface identifier. This will exclude inherited functions.
 	uint32_t interfaceId() const;
 
@@ -538,6 +546,8 @@ private:
 	bool m_abstract{false};
 
 	util::LazyInit<std::vector<std::pair<util::FixedHash<4>, FunctionTypePointer>>> m_interfaceFunctionList[2];
+	// Solidity++: offchain functions list
+	util::LazyInit<std::vector<std::pair<util::FixedHash<4>, FunctionTypePointer>>> m_offchainFunctionList[2];
 	util::LazyInit<std::vector<EventDefinition const*>> m_interfaceEvents;
 };
 
@@ -822,7 +832,7 @@ public:
 		m_body(_body)
 	{
 		solAssert(_kind == Token::Constructor || _kind == Token::Function || _kind == Token::Fallback || _kind == Token::Receive || _kind == Token::OnMessage || _kind == Token::Getter, "");
-		solAssert(isOrdinary() || isOnMessage() || isGetter() == !name().empty(), "");
+		solAssert(isOrdinary() || isOnMessage() || isOffchain() == !name().empty(), "");
 	}
 
 	void accept(ASTVisitor& _visitor) override;
@@ -835,7 +845,7 @@ public:
 	bool isFallback() const { return m_kind == Token::Fallback; }
 	bool isReceive() const { return m_kind == Token::Receive; }
 	bool isOnMessage() const { return m_kind == Token::OnMessage; }
-	bool isGetter() const { return m_kind == Token::Getter; }
+	bool isOffchain() const { return m_kind == Token::Getter; }
 	bool isFree() const { return m_free; }
 	Token kind() const { return m_kind; }
 	bool isPayable() const { return m_stateMutability == StateMutability::Payable; }

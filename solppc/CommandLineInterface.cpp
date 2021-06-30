@@ -345,6 +345,19 @@ void CommandLineInterface::handleBinary(string const& _contract)
 			sout() << objectWithLinkRefsHex(m_compiler->object(_contract)) << endl;
 		}
 	}
+	// Solidity++: output offchain binary
+	// TODO: add offchain args
+	if (m_args.count(g_argBinary))
+	{
+		if (m_args.count(g_argOutputDir))
+			createFile(m_compiler->filesystemFriendlyName(_contract) + "_offchain.bin", objectWithLinkRefsHex(m_compiler->offchainObject(_contract)));
+		else
+		{
+			sout() << "OffChain Binary:" << endl;
+			sout() << objectWithLinkRefsHex(m_compiler->offchainObject(_contract)) << endl;
+		}
+	}
+
 	if (m_args.count(g_argBinaryRuntime))
 	{
 		if (m_args.count(g_argOutputDir))
@@ -2032,18 +2045,28 @@ void CommandLineInterface::outputCompilationResults()
 		if (m_args.count(g_argAsm) || m_args.count(g_argAsmJson))
 		{
 			string ret;
+			// Solidity++: offchain assembly
+			string ret_offchain;
 			if (m_args.count(g_argAsmJson))
+			{
 				ret = jsonPrettyPrint(removeNullMembers(m_compiler->assemblyJSON(contract)));
+				ret_offchain = jsonPrettyPrint(removeNullMembers(m_compiler->offchainAssemblyJSON(contract)));
+			}
 			else
+			{
 				ret = m_compiler->assemblyString(contract, m_sourceCodes);
+				ret_offchain = m_compiler->offchainAssemblyString(contract, m_sourceCodes);
+			}
 
 			if (m_args.count(g_argOutputDir))
 			{
 				createFile(m_compiler->filesystemFriendlyName(contract) + (m_args.count(g_argAsmJson) ? "_evm.json" : ".evm"), ret);
+				createFile(m_compiler->filesystemFriendlyName(contract) + (m_args.count(g_argAsmJson) ? "_evm_offchain.json" : "_offchain.evm"), ret_offchain);
 			}
 			else
 			{
-				sout() << "EVM assembly:" << endl << ret << endl;
+				sout() << "EVM assembly:" << endl << "=======" << endl << ret << endl;
+				sout() << "=======" << endl << "Offchain assembly:" << endl << "=======" << endl << ret_offchain << endl;
 			}
 		}
 

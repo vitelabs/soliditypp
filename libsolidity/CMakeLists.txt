@@ -45,7 +45,7 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/ast/AST_accept.h
 	${ORIGINAL_SOURCE_DIR}/ast/ASTAnnotations.cpp
 	${ORIGINAL_SOURCE_DIR}/ast/ASTAnnotations.h
-	${ORIGINAL_SOURCE_DIR}/ast/ASTEnums.h
+	ast/ASTEnums.h
 	${ORIGINAL_SOURCE_DIR}/ast/ASTForward.h
 	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonConverter.cpp
 	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonConverter.h
@@ -63,14 +63,14 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/codegen/ABIFunctions.h
 	${ORIGINAL_SOURCE_DIR}/codegen/ArrayUtils.cpp
 	${ORIGINAL_SOURCE_DIR}/codegen/ArrayUtils.h
-	${ORIGINAL_SOURCE_DIR}/codegen/Compiler.cpp
-	${ORIGINAL_SOURCE_DIR}/codegen/Compiler.h
+	codegen/Compiler.cpp
+	codegen/Compiler.h
 	${ORIGINAL_SOURCE_DIR}/codegen/CompilerContext.cpp
 	${ORIGINAL_SOURCE_DIR}/codegen/CompilerContext.h
 	${ORIGINAL_SOURCE_DIR}/codegen/CompilerUtils.cpp
 	${ORIGINAL_SOURCE_DIR}/codegen/CompilerUtils.h
-	${ORIGINAL_SOURCE_DIR}/codegen/ContractCompiler.cpp
-	${ORIGINAL_SOURCE_DIR}/codegen/ContractCompiler.h
+	codegen/ContractCompiler.cpp
+	codegen/ContractCompiler.h
 	${ORIGINAL_SOURCE_DIR}/codegen/ExpressionCompiler.cpp
 	${ORIGINAL_SOURCE_DIR}/codegen/ExpressionCompiler.h
 	${ORIGINAL_SOURCE_DIR}/codegen/LValue.cpp
@@ -122,10 +122,10 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/formal/SymbolicVariables.h
 	${ORIGINAL_SOURCE_DIR}/formal/VariableUsage.cpp
 	${ORIGINAL_SOURCE_DIR}/formal/VariableUsage.h
-	${ORIGINAL_SOURCE_DIR}/interface/ABI.cpp
-	${ORIGINAL_SOURCE_DIR}/interface/ABI.h
-	${ORIGINAL_SOURCE_DIR}/interface/CompilerStack.cpp
-	${ORIGINAL_SOURCE_DIR}/interface/CompilerStack.h
+	interface/ABI.cpp
+	interface/ABI.h
+	interface/CompilerStack.cpp
+	interface/CompilerStack.h
 	${ORIGINAL_SOURCE_DIR}/interface/DebugSettings.h
 	${ORIGINAL_SOURCE_DIR}/interface/GasEstimator.cpp
 	${ORIGINAL_SOURCE_DIR}/interface/GasEstimator.h
