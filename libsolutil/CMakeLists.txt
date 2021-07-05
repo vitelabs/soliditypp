@@ -6,8 +6,8 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/Assertions.h
 	${ORIGINAL_SOURCE_DIR}/Common.cpp
 	${ORIGINAL_SOURCE_DIR}/Common.h
-	${ORIGINAL_SOURCE_DIR}/CommonData.cpp
-	${ORIGINAL_SOURCE_DIR}/CommonData.h
+	CommonData.cpp
+	CommonData.h
 	${ORIGINAL_SOURCE_DIR}/CommonIO.cpp
 	${ORIGINAL_SOURCE_DIR}/CommonIO.h
 	${ORIGINAL_SOURCE_DIR}/cxx20.h

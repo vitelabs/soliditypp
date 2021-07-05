@@ -2185,6 +2185,29 @@ public:
 
 	/// @returns true if this looks like a checksummed address.
 	bool looksLikeAddress() const;
+
+	/// @returns true if this looks like a checksummed vite address.
+	/// Solidity++:
+	bool looksLikeViteAddress() const;
+
+	/// @returns true if this looks like a vite token id.
+	/// Solidity++:
+	bool looksLikeViteTokenId() const;
+
+	/// @returns true if it passes the vite address checksum test.
+	/// Solidity++:
+	bool passesViteAddressChecksum() const;
+
+	// @returns true if it passes the vite token id checksum test.
+	/// Solidity++:
+	bool passesViteTokenIdChecksum() const;
+
+	/// Solidity++: get vite address in hex
+	ASTString getViteAddressHex() const;
+
+	/// Solidity++: get vite token id in hex
+	ASTString getViteTokenIdHex() const;
+
 	/// @returns true if it passes the address checksum test.
 	bool passesAddressChecksum() const;
 	/// @returns the checksummed version of an address (or empty string if not valid)

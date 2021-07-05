@@ -1,0 +1,11 @@
+pragma soliditypp >=0.4.2;
+
+contract TokenIdInEvent {
+
+    event e(tokenId token);
+
+    onMessage f() {
+		tokenId t = "tti_5649544520544f4b454e6e40";
+        emit e(t);
+	}
+}

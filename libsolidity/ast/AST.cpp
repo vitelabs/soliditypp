@@ -862,10 +862,53 @@ bool Literal::looksLikeAddress() const
 	return abs(int(valueWithoutUnderscores().length()) - 42) <= 1;
 }
 
-bool Literal::passesAddressChecksum() const
+// Solidity++:
+bool Literal::looksLikeViteAddress() const
 {
-	solAssert(isHexNumber(), "Expected hex number");
-	return util::passesAddressChecksum(valueWithoutUnderscores(), true);
+	if (!boost::starts_with(value(), "vite_"))
+		return false;
+
+	if (subDenomination() != SubDenomination::None)
+		return false;
+
+	return int(value().length()) == 55;
+}
+
+// Solidity++:
+bool Literal::looksLikeViteTokenId() const
+{
+	if (!boost::starts_with(value(), "tti_"))
+		return false;
+
+	if (subDenomination() != SubDenomination::None)
+		return false;
+
+	return int(value().length()) == 28;
+}
+
+// Solidity++: check vite address checksum
+bool Literal::passesViteAddressChecksum() const
+{
+	return util::passesViteAddressChecksum(value());
+}
+
+// Solidity++: check vite address checksum
+
+bool Literal::passesViteTokenIdChecksum() const
+{
+	return util::passesViteTokenIdChecksum(value());
+}
+
+// Solidity++: get vite address hex value
+ASTString Literal::getViteAddressHex() const
+{
+	return util::getViteAddressHex(value());
+}
+
+// Solidity++: get vite token id hex value
+ASTString Literal::getViteTokenIdHex() const
+{
+	return util::getViteTokenIdHex(value());
 }
 
 string Literal::getChecksummedAddress() const

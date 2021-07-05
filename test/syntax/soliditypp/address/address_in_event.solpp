@@ -1,0 +1,12 @@
+pragma soliditypp >=0.4.2;
+
+contract AddressInEvent {
+
+    event e(address addr1, address addr2);
+
+    onMessage f() {
+		address uAddr = "vite_010203040506070809080706050403020102030412227c8b71";
+		address uContract = "vite_0102030405060708090807060504030201020304eddd83748e";
+        emit e(uAddr, uContract);
+	}
+}

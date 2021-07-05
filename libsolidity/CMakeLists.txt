@@ -36,7 +36,7 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/analysis/StaticAnalyzer.h
 	analysis/SyntaxChecker.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/SyntaxChecker.h
-	${ORIGINAL_SOURCE_DIR}/analysis/TypeChecker.cpp
+	analysis/TypeChecker.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/TypeChecker.h
 	${ORIGINAL_SOURCE_DIR}/analysis/ViewPureChecker.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/ViewPureChecker.h
@@ -56,9 +56,9 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/ast/ASTVisitor.h
 	${ORIGINAL_SOURCE_DIR}/ast/ExperimentalFeatures.h
 	ast/Types.cpp
-	${ORIGINAL_SOURCE_DIR}/ast/Types.h
-	${ORIGINAL_SOURCE_DIR}/ast/TypeProvider.cpp
-	${ORIGINAL_SOURCE_DIR}/ast/TypeProvider.h
+	ast/Types.h
+	ast/TypeProvider.cpp
+	ast/TypeProvider.h
 	${ORIGINAL_SOURCE_DIR}/codegen/ABIFunctions.cpp
 	${ORIGINAL_SOURCE_DIR}/codegen/ABIFunctions.h
 	${ORIGINAL_SOURCE_DIR}/codegen/ArrayUtils.cpp
@@ -71,16 +71,16 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/codegen/CompilerUtils.h
 	codegen/ContractCompiler.cpp
 	codegen/ContractCompiler.h
-	${ORIGINAL_SOURCE_DIR}/codegen/ExpressionCompiler.cpp
-	${ORIGINAL_SOURCE_DIR}/codegen/ExpressionCompiler.h
+	codegen/ExpressionCompiler.cpp
+	codegen/ExpressionCompiler.h
 	${ORIGINAL_SOURCE_DIR}/codegen/LValue.cpp
 	${ORIGINAL_SOURCE_DIR}/codegen/LValue.h
 	${ORIGINAL_SOURCE_DIR}/codegen/MultiUseYulFunctionCollector.h
 	${ORIGINAL_SOURCE_DIR}/codegen/MultiUseYulFunctionCollector.cpp
 	${ORIGINAL_SOURCE_DIR}/codegen/ReturnInfo.h
 	${ORIGINAL_SOURCE_DIR}/codegen/ReturnInfo.cpp
-	${ORIGINAL_SOURCE_DIR}/codegen/YulUtilFunctions.h
-	${ORIGINAL_SOURCE_DIR}/codegen/YulUtilFunctions.cpp
+	codegen/YulUtilFunctions.h
+	codegen/YulUtilFunctions.cpp
 	${ORIGINAL_SOURCE_DIR}/codegen/ir/Common.cpp
 	${ORIGINAL_SOURCE_DIR}/codegen/ir/Common.h
 	${ORIGINAL_SOURCE_DIR}/codegen/ir/IRGenerator.cpp

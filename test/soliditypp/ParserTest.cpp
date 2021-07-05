@@ -87,5 +87,25 @@ namespace solidity::frontend::test::soliditypp
         BOOST_CHECK(successParse(text));
     }
 
+    BOOST_AUTO_TEST_CASE(soliditypp_address_literal)
+    {
+        char const* text = R"(
+            contract Test {
+                address a = "vite_010203040506070809080706050403020102030412227c8b71";
+            }
+        )";
+        BOOST_CHECK(successParse(text));
+    }
+
+    BOOST_AUTO_TEST_CASE(soliditypp_tokenid_literal)
+    {
+        char const* text = R"(
+            contract Test {
+                tokenId token = "tti_5649544520544f4b454e6e40";
+            }
+        )";
+        BOOST_CHECK(successParse(text));
+    }
+
     BOOST_AUTO_TEST_SUITE_END()
 }

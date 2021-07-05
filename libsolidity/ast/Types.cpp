@@ -410,11 +410,12 @@ string AddressType::canonicalName() const
 	return "address";
 }
 
+// Solidity++:
 u256 AddressType::literalValue(Literal const* _literal) const
 {
 	solAssert(_literal, "");
-	solAssert(_literal->value().substr(0, 2) == "0x", "");
-	return u256(_literal->valueWithoutUnderscores());
+	solAssert(_literal->value().substr(0, 5) == "vite_", "Vite address must begin with vite_");
+	return u256(_literal->getViteAddressHex());
 }
 
 TypeResult AddressType::unaryOperatorResult(Token _operator) const
@@ -456,6 +457,24 @@ MemberList::MemberMap AddressType::nativeMembers(ASTNode const*) const
 		members.emplace_back(MemberList::Member{"transfer", TypeProvider::function(strings{"uint"}, strings(), FunctionType::Kind::Transfer, false, StateMutability::NonPayable)});
 	}
 	return members;
+}
+
+// Solidity++: ViteTokenIdType definitions
+string ViteTokenIdType::richIdentifier() const
+{
+	return "t_tokenId";
+}
+
+string ViteTokenIdType::toString(bool) const
+{
+	return "tokenId";
+}
+
+u256 ViteTokenIdType::literalValue(Literal const* _literal) const
+{
+	solAssert(_literal, "");
+	solAssert(_literal->value().substr(0, 4) == "tti_", "Vite Token Id must begin with tti_");
+	return u256(_literal->getViteTokenIdHex());
 }
 
 namespace

@@ -197,6 +197,12 @@ private:
 	langutil::EVMVersion m_evmVersion;
 	/// Counter for the next AST node ID
 	int64_t m_currentNodeID = 0;
+
+	/// Solidity++: parse vite address
+	ASTPointer<Expression> parseViteAddress();
+
+	/// Solidity++: parse vite token id
+	ASTPointer<Expression> parseViteTokenId();
 };
 
 }

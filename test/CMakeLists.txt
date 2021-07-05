@@ -19,12 +19,15 @@ set(solidity_test_base_sources
 set(sources
     main.cpp
     ${PROJECT_SOURCE_DIR}/solidity/test/libsolidity/ErrorCheck.cpp
+    libsolidity/SolidityTypes.cpp
+    libsolidity/AST.cpp
     solidity/Scanner.cpp
     solidity/SolidityParser.cpp
     soliditypp/ScannerTest.cpp
     soliditypp/ParserTest.cpp
     libsolutil/Keccak256.cpp
     libsolutil/Blake2b.cpp
+    libsolutil/CommonData.cpp
 )
 
 include_directories(AFTER ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/solidity)

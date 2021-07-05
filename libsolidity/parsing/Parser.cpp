@@ -7,7 +7,6 @@
  */
 
 #include <libsolidity/parsing/Parser.h>
-
 #include <libsolidity/interface/Version.h>
 #include <libyul/AsmParser.h>
 #include <libyul/AST.h>
@@ -17,11 +16,12 @@
 #include <liblangutil/SemVerHandler.h>
 #include <liblangutil/SourceLocation.h>
 #include <libyul/backends/evm/EVMDialect.h>
-#include <boost/algorithm/string/trim.hpp>
-#include <boost/algorithm/string/replace.hpp>
 #include <cctype>
 #include <vector>
 #include <regex>
+
+#include <boost/algorithm/string.hpp>
+#include <libsolutil/Blake2.h>
 
 using namespace std;
 using namespace solidity::langutil;
@@ -2236,4 +2236,5 @@ ASTPointer<ASTString> Parser::getLiteralAndAdvance()
 	m_scanner->next();
 	return identifier;
 }
+
 }
