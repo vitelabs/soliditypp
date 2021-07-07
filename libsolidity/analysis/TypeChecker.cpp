@@ -3314,8 +3314,8 @@ void TypeChecker::endVisit(Literal const& _literal)
 {
 	if (_literal.looksLikeViteAddress()) // Solidity++: check vite address literal
 	{
-		// Assign type here if it even looks like an address. This prevents double errors for invalid addresses
-		_literal.annotation().type = TypeProvider::address();
+		// Solidity++: default mutability of address is payable
+		_literal.annotation().type = TypeProvider::payableAddress();
 
 		string msg;
 

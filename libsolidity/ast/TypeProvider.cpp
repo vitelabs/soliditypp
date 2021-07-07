@@ -237,7 +237,8 @@ Type const* TypeProvider::fromElementaryTypeName(ElementaryTypeNameToken const& 
 			solAssert(*_stateMutability == StateMutability::Payable, "");
 			return payableAddress();
 		}
-		return address();
+		// Solidity++: default address state mutability is payable 
+		return payableAddress();
 	}
 	// Solidity++: convert tokenId type
 	case Token::TokenId:

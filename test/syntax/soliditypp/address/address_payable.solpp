@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma soliditypp >=0.4.2;
+
+contract AddressPayable {
+    address payable a1 = "vite_010203040506070809080706050403020102030412227c8b71";
+    address payable a2 = address("vite_010203040506070809080706050403020102030412227c8b71");
+    address a3 = a1;
+}
+// ----

@@ -3865,7 +3865,7 @@ MemberList::MemberMap MagicType::nativeMembers(ASTNode const*) const
 		});
 	case Kind::Message:
 		return MemberList::MemberMap({
-			{"sender", TypeProvider::address()},
+			{"sender", TypeProvider::payableAddress()},  // Solidity++: sender is a payable address
 			{"gas", TypeProvider::uint256()},
 			{"value", TypeProvider::uint256()},
 			{"data", TypeProvider::array(DataLocation::CallData)},

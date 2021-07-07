@@ -1042,7 +1042,7 @@ ASTPointer<TypeName> Parser::parseTypeName()
 		nodeFactory.markEndPosition();
 		m_scanner->next();
 		auto stateMutability = elemTypeName.token() == Token::Address
-			? optional<StateMutability>{StateMutability::NonPayable}
+			? optional<StateMutability>{StateMutability::Payable} // Solidity++: default mutability of address is payable
 			: nullopt;
 		if (TokenTraits::isStateMutabilitySpecifier(m_scanner->currentToken()))
 		{
