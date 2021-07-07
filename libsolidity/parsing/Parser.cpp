@@ -577,7 +577,7 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 				{Token::Fallback, "fallback function"},
 				{Token::Receive, "receive function"},
 				{Token::OnMessage, "onMessage function"},
-				{Token::OnMessage, "offchain function"},
+				{Token::Getter, "offchain function"},
 			}.at(m_scanner->currentToken());
 			name = make_shared<ASTString>(TokenTraits::toString(m_scanner->currentToken()));
 			string message{
@@ -622,7 +622,7 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 	}
 
 	// Solidity++: the visibility of getter is offchain
-	if(kind == Token::OnMessage)
+	if(kind == Token::Getter)
 	{
 		header.visibility = Visibility::Offchain;
 	}
