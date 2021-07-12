@@ -883,7 +883,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				}
 			if (!event.isAnonymous())
 			{
-				m_context << u256(h256::Arith(keccak256(function.externalSignature())));
+				m_context << u256(h256::Arith(blake2b(function.externalSignature())));  // Solidity++: keccak256 -> blake2b
 				++numIndexed;
 			}
 			solAssert(numIndexed <= 4, "Too many indexed arguments.");
