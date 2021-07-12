@@ -28,6 +28,12 @@ public:
 		m_offchainContext(_evmVersion, _revertStrings)
 	{ }
 
+	/// Solidity++: compile Vite contract (without metadata)
+	void compileViteContract(
+		ContractDefinition const& _contract,
+		std::map<ContractDefinition const*, std::shared_ptr<Compiler const>> const& _otherCompilers
+	);
+
 	/// Compiles a contract.
 	/// @arg _metadata contains the to be injected metadata CBOR
 	void compileContract(

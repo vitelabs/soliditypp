@@ -124,6 +124,9 @@ namespace solidity::langutil
 	K(Else, "else", 0)                                                 \
 	K(Enum, "enum", 0)                                                 \
 	K(Emit, "emit", 0)                                                 \
+	/* Solidity++: send keyword for send statement */				   \
+	K(Send, "send", 0)												   \
+	\
 	K(Event, "event", 0)                                               \
 	K(External, "external", 0)                                         \
 	K(Fallback, "fallback", 0)                                         \

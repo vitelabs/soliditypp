@@ -54,6 +54,7 @@
 #include <libsolutil/SwarmHash.h>
 #include <libsolutil/IpfsHash.h>
 #include <libsolutil/JSON.h>
+#include <libsolutil/Keccak256.h>
 
 #include <json/json.h>
 
@@ -1219,12 +1220,15 @@ void CompilerStack::compileContract(
 	shared_ptr<Compiler> compiler = make_shared<Compiler>(m_evmVersion, m_revertStrings, m_optimiserSettings);
 	compiledContract.compiler = compiler;
 
-	bytes cborEncodedMetadata = createCBORMetadata(compiledContract);
+	// bytes cborEncodedMetadata = createCBORMetadata(compiledContract);
 
 	try
 	{
 		// Run optimiser and compile the contract.
-		compiler->compileContract(_contract, _otherCompilers, cborEncodedMetadata);
+		// compiler->compileContract(_contract, _otherCompilers, cborEncodedMetadata);
+		
+		// Solidity++:
+		compiler->compileViteContract(_contract, _otherCompilers);
 	}
 	catch(evmasm::OptimizerException const&)
 	{

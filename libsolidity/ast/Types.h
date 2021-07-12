@@ -1,24 +1,9 @@
-/*
-	This file is part of solidity.
-
-	solidity is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	solidity is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with solidity.  If not, see <http://www.gnu.org/licenses/>.
-*/
 // SPDX-License-Identifier: GPL-3.0
 /**
- * @author Christian <c@ethdev.com>
- * @date 2014
- * Solidity data types
+ * @author Charles <charles@vite.org>
+ * @date 2021
+ * Solidity++ data types
+ * Solidity++ is modified from Solidity under the terms of the GNU General Public License.
  */
 
 #pragma once
@@ -1193,6 +1178,8 @@ public:
 		/// (i.e. when accessed directly via the name of the containing contract).
 		/// Cannot be called.
 		Declaration,
+		/// Solidity++:
+		SendMessage,
 	};
 
 	/// Creates the type of a function.
@@ -1202,6 +1189,10 @@ public:
 	explicit FunctionType(VariableDeclaration const& _varDecl);
 	/// Creates the function type of an event.
 	explicit FunctionType(EventDefinition const& _event);
+
+	/// Solidity++: Creates the function type of a message.
+	explicit FunctionType(MessageDefinition const& _message);
+
 	/// Creates the type of a function type name.
 	explicit FunctionType(FunctionTypeName const& _typeName);
 	/// Function type constructor to be used for a plain type (not derived from a declaration).

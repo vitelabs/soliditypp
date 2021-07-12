@@ -132,6 +132,10 @@ public:
 	/// @returns the function type of an event.
 	static FunctionType const* function(EventDefinition const& _event);
 
+	/// Solidity++:
+	/// @returns the function type of a message.
+	static FunctionType const* function(MessageDefinition const& _message);
+
 	/// @returns the type of a function type name.
 	static FunctionType const* function(FunctionTypeName const& _typeName);
 

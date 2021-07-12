@@ -919,7 +919,8 @@ ASTPointer<EventDefinition> Parser::parseEventDefinition()
 	return nodeFactory.createNode<EventDefinition>(name, documentation, parameters, anonymous);
 }
 
-ASTPointer<EventDefinition> Parser::parseMessageDefinition()
+// Solidity++:
+ASTPointer<MessageDefinition> Parser::parseMessageDefinition()
 {
 	RecursionGuard recursionGuard(*this);
 	ASTNodeFactory nodeFactory(*this);
@@ -932,15 +933,9 @@ ASTPointer<EventDefinition> Parser::parseMessageDefinition()
 	options.allowIndexed = true;
 	ASTPointer<ParameterList> parameters = parseParameterList(options);
 
-	bool anonymous = false;
-	if (m_scanner->currentToken() == Token::Anonymous)
-	{
-		anonymous = true;
-		m_scanner->next();
-	}
 	nodeFactory.markEndPosition();
 	expectToken(Token::Semicolon);
-	return nodeFactory.createNode<EventDefinition>(name, documentation, parameters, anonymous);
+	return nodeFactory.createNode<MessageDefinition>(name, documentation, parameters);
 }
 
 ASTPointer<UsingForDirective> Parser::parseUsingDirective()
@@ -1236,6 +1231,11 @@ ASTPointer<Statement> Parser::parseStatement(bool _allowUnchecked)
 		case Token::Emit:
 			statement = parseEmitStatement(docString);
 			break;
+		// Solidity++: parse send statement
+		case Token::Send:
+			statement = parseSendStatement(docString);
+			break;
+
 		case Token::Identifier:
 			if (m_insideModifier && m_scanner->currentLiteral() == "_")
 				{
@@ -1464,6 +1464,49 @@ ASTPointer<EmitStatement> Parser::parseEmitStatement(ASTPointer<ASTString> const
 	auto statement = nodeFactory.createNode<EmitStatement>(_docString, eventCall);
 	return statement;
 }
+
+
+// Solidity++: parse send statement
+ASTPointer<SendStatement> Parser::parseSendStatement(ASTPointer<ASTString> const& _docString)
+{
+	expectToken(Token::Send);
+	expectToken(Token::LParen);
+
+	ASTNodeFactory nodeFactory(*this);
+	
+	ASTPointer<Expression> toAddress = parseExpression();
+	expectToken(Token::Comma, false);
+	m_scanner->next();
+
+	ASTNodeFactory messageCallNodeFactory(*this);
+
+	if (m_scanner->currentToken() != Token::Identifier)
+		fatalParserError(5620_error, "Expected message name or path.");
+
+	IndexAccessedPath iap;
+	while (true)
+	{
+		iap.path.push_back(parseIdentifier());
+		if (m_scanner->currentToken() != Token::Period)
+			break;
+		m_scanner->next();
+	}
+
+	auto messageName = expressionFromIndexAccessStructure(iap);
+	expectToken(Token::LParen);
+
+	vector<ASTPointer<Expression>> arguments;
+	vector<ASTPointer<ASTString>> names;
+	std::tie(arguments, names) = parseFunctionCallArguments();
+	messageCallNodeFactory.markEndPosition();
+	nodeFactory.markEndPosition();
+	expectToken(Token::RParen);
+	expectToken(Token::RParen);
+	auto messageCall = messageCallNodeFactory.createNode<FunctionCall>(messageName, arguments, names);
+	auto statement = nodeFactory.createNode<SendStatement>(_docString, toAddress, messageCall);
+	return statement;
+}
+
 
 ASTPointer<Statement> Parser::parseSimpleStatement(ASTPointer<ASTString> const& _docString)
 {

@@ -37,23 +37,23 @@ set(sources
 	analysis/SyntaxChecker.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/SyntaxChecker.h
 	analysis/TypeChecker.cpp
-	${ORIGINAL_SOURCE_DIR}/analysis/TypeChecker.h
+	analysis/TypeChecker.h
 	${ORIGINAL_SOURCE_DIR}/analysis/ViewPureChecker.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/ViewPureChecker.h
 	ast/AST.cpp
 	ast/AST.h
-	${ORIGINAL_SOURCE_DIR}/ast/AST_accept.h
+	ast/AST_accept.h
 	${ORIGINAL_SOURCE_DIR}/ast/ASTAnnotations.cpp
-	${ORIGINAL_SOURCE_DIR}/ast/ASTAnnotations.h
+	ast/ASTAnnotations.h
 	ast/ASTEnums.h
-	${ORIGINAL_SOURCE_DIR}/ast/ASTForward.h
-	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonConverter.cpp
-	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonConverter.h
+	ast/ASTForward.h
+	ast/ASTJsonConverter.cpp
+	ast/ASTJsonConverter.h
 	${ORIGINAL_SOURCE_DIR}/ast/ASTUtils.cpp
 	${ORIGINAL_SOURCE_DIR}/ast/ASTUtils.h
 	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonImporter.cpp
 	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonImporter.h
-	${ORIGINAL_SOURCE_DIR}/ast/ASTVisitor.h
+	ast/ASTVisitor.h
 	${ORIGINAL_SOURCE_DIR}/ast/ExperimentalFeatures.h
 	ast/Types.cpp
 	ast/Types.h
@@ -67,8 +67,8 @@ set(sources
 	codegen/Compiler.h
 	${ORIGINAL_SOURCE_DIR}/codegen/CompilerContext.cpp
 	${ORIGINAL_SOURCE_DIR}/codegen/CompilerContext.h
-	${ORIGINAL_SOURCE_DIR}/codegen/CompilerUtils.cpp
-	${ORIGINAL_SOURCE_DIR}/codegen/CompilerUtils.h
+	codegen/CompilerUtils.cpp
+	codegen/CompilerUtils.h
 	codegen/ContractCompiler.cpp
 	codegen/ContractCompiler.h
 	codegen/ExpressionCompiler.cpp

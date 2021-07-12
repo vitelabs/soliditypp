@@ -23,6 +23,7 @@ void Compiler::compileContract(
 {
 	ContractCompiler runtimeCompiler(nullptr, m_runtimeContext, m_optimiserSettings);
 	runtimeCompiler.compileContract(_contract, _otherCompilers);
+
 	m_runtimeContext.appendAuxiliaryData(_metadata);
 
 	// This might modify m_runtimeContext because it can access runtime functions at
@@ -36,15 +37,37 @@ void Compiler::compileContract(
 
 	m_context.optimise(m_optimiserSettings);
 
-	// Solidity++: compile offchain functions
+	solAssert(m_context.appendYulUtilityFunctionsRan(), "appendYulUtilityFunctions() was not called in compiler context.");
+	solAssert(m_runtimeContext.appendYulUtilityFunctionsRan(), "appendYulUtilityFunctions() was not called in runtime compiler context.");
+}
+
+// Solidity++: compile Vite contract (without metadata)
+void Compiler::compileViteContract(
+	ContractDefinition const& _contract,
+	std::map<ContractDefinition const*, shared_ptr<Compiler const>> const& _otherCompilers
+)
+{
+	ContractCompiler runtimeCompiler(nullptr, m_runtimeContext, m_optimiserSettings);
+	runtimeCompiler.compileContract(_contract, _otherCompilers);
+
+	// This might modify m_runtimeContext because it can access runtime functions at
+	// creation time.
+	OptimiserSettings creationSettings{m_optimiserSettings};
+	// The creation code will be executed at most once, so we modify the optimizer
+	// settings accordingly.
+	creationSettings.expectedExecutionsPerDeployment = 1;
+	ContractCompiler creationCompiler(&runtimeCompiler, m_context, creationSettings);
+	m_runtimeSub = creationCompiler.compileConstructor(_contract, _otherCompilers);
+
+	m_context.optimise(m_optimiserSettings);
+
+	// Compile offchain functions
 	ContractCompiler offchainCompiler(nullptr, m_offchainContext, m_optimiserSettings);
 	offchainCompiler.compileOffchain(_contract, _otherCompilers);
-	m_offchainContext.appendAuxiliaryData(_metadata);
 
 	solAssert(m_context.appendYulUtilityFunctionsRan(), "appendYulUtilityFunctions() was not called in compiler context.");
 	solAssert(m_runtimeContext.appendYulUtilityFunctionsRan(), "appendYulUtilityFunctions() was not called in runtime compiler context.");
-	// Solidity++: 
-	solAssert(m_offchainContext.appendYulUtilityFunctionsRan(), "appendYulUtilityFunctions() was not called in offchain compiler context.");
+
 }
 
 std::shared_ptr<evmasm::Assembly> Compiler::runtimeAssemblyPtr() const

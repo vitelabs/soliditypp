@@ -697,6 +697,38 @@ bool TypeChecker::visit(EventDefinition const& _eventDef)
 	return true;
 }
 
+// Solidity++: check message definition type
+bool TypeChecker::visit(MessageDefinition const& _msgDef)
+{
+	solAssert(_msgDef.visibility() > Visibility::Internal, "");
+	unsigned numIndexed = 0;
+	for (ASTPointer<VariableDeclaration> const& var: _msgDef.parameters())
+	{
+		if (var->isIndexed())
+			numIndexed++;
+		if (type(*var)->containsNestedMapping())
+			m_errorReporter.typeError(
+				3448_error,
+				var->location(),
+				"Type containing a (nested) mapping is not allowed as message parameter type."
+			);
+		if (!type(*var)->interfaceType(false))
+			m_errorReporter.typeError(3417_error, var->location(), "Internal or recursive type is not allowed as message parameter type.");
+		if (
+			!useABICoderV2() &&
+			!typeSupportedByOldABIEncoder(*type(*var), false /* isLibrary */)
+		)
+			m_errorReporter.typeError(
+				3061_error,
+				var->location(),
+				"This type is only supported in ABI coder v2. "
+				"Use \"pragma abicoder v2;\" to enable the feature."
+			);
+	}
+
+	return true;
+}
+
 void TypeChecker::endVisit(FunctionTypeName const& _funType)
 {
 	FunctionType const& fun = dynamic_cast<FunctionType const&>(*_funType.annotation().type);
@@ -3130,6 +3162,7 @@ vector<Declaration const*> TypeChecker::cleanOverloadedDeclarations(
 		solAssert(
 			dynamic_cast<FunctionDefinition const*>(declaration) ||
 			dynamic_cast<EventDefinition const*>(declaration) ||
+			dynamic_cast<MessageDefinition const*>(declaration) ||  // Solidity++
 			dynamic_cast<VariableDeclaration const*>(declaration) ||
 			dynamic_cast<MagicVariableDeclaration const*>(declaration),
 			"Found overloading involving something not a function, event or a (magic) variable."

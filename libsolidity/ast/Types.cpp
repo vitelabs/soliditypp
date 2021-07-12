@@ -389,7 +389,7 @@ BoolResult AddressType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 	else if (m_stateMutability == StateMutability::NonPayable)
 	{
 		if (auto integerType = dynamic_cast<IntegerType const*>(&_convertTo))
-			return (!integerType->isSigned() && integerType->numBits() == 160);
+			return (!integerType->isSigned() && integerType->numBits() == 168); // Solidity++: 168-bit address
 		else if (auto fixedBytesType = dynamic_cast<FixedBytesType const*>(&_convertTo))
 			return (fixedBytesType->numBytes() == 20);
 	}
@@ -453,7 +453,10 @@ MemberList::MemberMap AddressType::nativeMembers(ASTNode const*) const
 	};
 	if (m_stateMutability == StateMutability::Payable)
 	{
-		members.emplace_back(MemberList::Member{"send", TypeProvider::function(strings{"uint"}, strings{"bool"}, FunctionType::Kind::Send, false, StateMutability::NonPayable)});
+		// Solidity++: redefine address.send()
+		// members.emplace_back(MemberList::Member{"send", TypeProvider::function(strings{"uint"}, strings{"bool"}, FunctionType::Kind::Send, false, StateMutability::NonPayable)});
+		members.emplace_back(MemberList::Member{"send", TypeProvider::function(strings{"message"}, strings{}, FunctionType::Kind::Send, false, StateMutability::Payable)});
+
 		members.emplace_back(MemberList::Member{"transfer", TypeProvider::function(strings{"uint"}, strings(), FunctionType::Kind::Transfer, false, StateMutability::NonPayable)});
 	}
 	return members;
@@ -541,7 +544,7 @@ BoolResult IntegerType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 		return
 			(addressType->stateMutability() != StateMutability::Payable) &&
 			!isSigned() &&
-			(numBits() == 160);
+			(numBits() == 168);  // Solidity++: 168-bit address
 	else if (auto fixedBytesType = dynamic_cast<FixedBytesType const*>(&_convertTo))
 		return (!isSigned() && (numBits() == fixedBytesType->numBytes() * 8));
 	else if (dynamic_cast<EnumType const*>(&_convertTo))
@@ -960,7 +963,7 @@ BoolResult RationalNumberType::isExplicitlyConvertibleTo(Type const& _convertTo)
 			!isNegative() &&
 			!isFractional() &&
 			integerType() &&
-			(integerType()->numBits() <= 160));
+			(integerType()->numBits() <= 168));  // Solidity++: 168-bit address
 	else if (category == Category::Integer)
 		return false;
 	else if (auto enumType = dynamic_cast<EnumType const*>(&_convertTo))
@@ -1216,7 +1219,8 @@ string StringLiteralType::richIdentifier() const
 {
 	// Since we have to return a valid identifier and the string itself may contain
 	// anything, we hash it.
-	return "t_stringliteral_" + util::toHex(util::keccak256(m_value).asBytes());
+	// Solidity++: keccak256 -> blake2b
+	return "t_stringliteral_" + util::toHex(util::blake2b(m_value).asBytes());
 }
 
 bool StringLiteralType::operator==(Type const& _other) const
@@ -2742,6 +2746,28 @@ FunctionType::FunctionType(EventDefinition const& _event):
 			);
 }
 
+// Solidity++:
+FunctionType::FunctionType(MessageDefinition const& _message):
+	m_kind(Kind::SendMessage),
+	m_stateMutability(StateMutability::Payable),
+	m_declaration(&_message)
+{
+	for (ASTPointer<VariableDeclaration> const& var: _message.parameters())
+	{
+		m_parameterNames.push_back(var->name());
+		m_parameterTypes.push_back(var->annotation().type);
+	}
+
+	solAssert(
+			m_parameterNames.size() == m_parameterTypes.size(),
+			"Parameter names list must match parameter types list!"
+			);
+	solAssert(
+			m_returnParameterNames.size() == m_returnParameterTypes.size(),
+			"Return parameter names list must match return parameter types list!"
+			);
+}
+
 FunctionType::FunctionType(FunctionTypeName const& _typeName):
 	m_parameterNames(_typeName.parameterTypes().size(), ""),
 	m_returnParameterNames(_typeName.returnParameterTypes().size(), ""),
@@ -2867,6 +2893,7 @@ string FunctionType::richIdentifier() const
 	case Kind::RIPEMD160: id += "ripemd160"; break;
 	case Kind::GasLeft: id += "gasleft"; break;
 	case Kind::Event: id += "event"; break;
+	case Kind::SendMessage: id += "message"; break;  // Solidity++
 	case Kind::SetGas: id += "setgas"; break;
 	case Kind::SetValue: id += "setvalue"; break;
 	case Kind::BlockHash: id += "blockhash"; break;
@@ -3393,6 +3420,7 @@ string FunctionType::externalSignature() const
 	case Kind::External:
 	case Kind::DelegateCall:
 	case Kind::Event:
+	case Kind::SendMessage:  // Solidity++
 	case Kind::Declaration:
 		break;
 	default:

@@ -87,7 +87,7 @@ private:
 	);
 	ASTPointer<ModifierDefinition> parseModifierDefinition();
 	ASTPointer<EventDefinition> parseEventDefinition();
-	ASTPointer<EventDefinition> parseMessageDefinition();
+	ASTPointer<MessageDefinition> parseMessageDefinition();
 	ASTPointer<UsingForDirective> parseUsingDirective();
 	ASTPointer<ModifierInvocation> parseModifierInvocation();
 	ASTPointer<Identifier> parseIdentifier();
@@ -111,6 +111,9 @@ private:
 	ASTPointer<WhileStatement> parseDoWhileStatement(ASTPointer<ASTString> const& _docString);
 	ASTPointer<ForStatement> parseForStatement(ASTPointer<ASTString> const& _docString);
 	ASTPointer<EmitStatement> parseEmitStatement(ASTPointer<ASTString> const& docString);
+	// Solidity++: parse send statement
+	ASTPointer<SendStatement> parseSendStatement(ASTPointer<ASTString> const& _docString);
+
 	/// A "simple statement" can be a variable declaration statement or an expression statement.
 	ASTPointer<Statement> parseSimpleStatement(ASTPointer<ASTString> const& _docString);
 	ASTPointer<VariableDeclarationStatement> parseVariableDeclarationStatement(

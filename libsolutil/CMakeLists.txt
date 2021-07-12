@@ -15,7 +15,7 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/Exceptions.h
 	${ORIGINAL_SOURCE_DIR}/ErrorCodes.h
 	${ORIGINAL_SOURCE_DIR}/FixedHash.h
-	${ORIGINAL_SOURCE_DIR}/FunctionSelector.h
+	FunctionSelector.h
 	${ORIGINAL_SOURCE_DIR}/IndentedWriter.cpp
 	${ORIGINAL_SOURCE_DIR}/IndentedWriter.h
 	${ORIGINAL_SOURCE_DIR}/IpfsHash.cpp

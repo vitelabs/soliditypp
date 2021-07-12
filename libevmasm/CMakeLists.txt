@@ -1,8 +1,8 @@
 set(ORIGINAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/solidity/libevmasm)
 
 set(sources
-	${ORIGINAL_SOURCE_DIR}/Assembly.cpp
-	${ORIGINAL_SOURCE_DIR}/Assembly.h
+	Assembly.cpp
+	Assembly.h
 	${ORIGINAL_SOURCE_DIR}/AssemblyItem.cpp
 	${ORIGINAL_SOURCE_DIR}/AssemblyItem.h
 	${ORIGINAL_SOURCE_DIR}/BlockDeduplicator.cpp
@@ -18,8 +18,8 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/ExpressionClasses.h
 	${ORIGINAL_SOURCE_DIR}/GasMeter.cpp
 	${ORIGINAL_SOURCE_DIR}/GasMeter.h
-	${ORIGINAL_SOURCE_DIR}/Instruction.cpp
-	${ORIGINAL_SOURCE_DIR}/Instruction.h
+	Instruction.cpp
+	Instruction.h
 	${ORIGINAL_SOURCE_DIR}/JumpdestRemover.cpp
 	${ORIGINAL_SOURCE_DIR}/JumpdestRemover.h
 	${ORIGINAL_SOURCE_DIR}/KnownState.cpp

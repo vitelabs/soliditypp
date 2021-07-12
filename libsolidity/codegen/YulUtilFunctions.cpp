@@ -95,7 +95,8 @@ string YulUtilFunctions::copyToMemoryFunction(bool _fromCalldata)
 
 string YulUtilFunctions::copyLiteralToMemoryFunction(string const& _literal)
 {
-	string functionName = "copy_literal_to_memory_" + util::toHex(util::keccak256(_literal).asBytes());
+	// Solidity++: keccak256 -> blake2b
+	string functionName = "copy_literal_to_memory_" + util::toHex(util::blake2b(_literal).asBytes());
 
 	return m_functionCollector.createFunction(functionName, [&]() {
 		return Whiskers(R"(
@@ -114,7 +115,8 @@ string YulUtilFunctions::copyLiteralToMemoryFunction(string const& _literal)
 
 string YulUtilFunctions::storeLiteralInMemoryFunction(string const& _literal)
 {
-	string functionName = "store_literal_in_memory_" + util::toHex(util::keccak256(_literal).asBytes());
+	// Solidity++: keccak256 -> blake2b
+	string functionName = "store_literal_in_memory_" + util::toHex(util::blake2b(_literal).asBytes());
 
 	return m_functionCollector.createFunction(functionName, [&]() {
 		size_t words = (_literal.length() + 31) / 32;
@@ -3491,8 +3493,9 @@ string YulUtilFunctions::cleanupFunction(Type const& _type)
 		templ("functionName", functionName);
 		switch (_type.category())
 		{
+		// Solidity++: 168-bit address
 		case Type::Category::Address:
-			templ("body", "cleaned := " + cleanupFunction(IntegerType(160)) + "(value)");
+			templ("body", "cleaned := " + cleanupFunction(IntegerType(168)) + "(value)");
 			break;
 		// Solidity++: Vite token id
 		case Type::Category::ViteTokenId:

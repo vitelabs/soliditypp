@@ -493,6 +493,27 @@ EventDefinitionAnnotation& EventDefinition::annotation() const
 	return initAnnotation<EventDefinitionAnnotation>();
 }
 
+// Solidity++:
+TypePointer MessageDefinition::type() const
+{
+	return TypeProvider::function(*this);
+}
+
+// Solidity++:
+FunctionTypePointer MessageDefinition::functionType(bool _internal) const
+{
+	if (_internal)
+		return TypeProvider::function(*this);
+	else
+		return nullptr;
+}
+
+// Solidity++:
+MessageDefinitionAnnotation& MessageDefinition::annotation() const
+{
+	return initAnnotation<MessageDefinitionAnnotation>();
+}
+
 SourceUnit const& Scopable::sourceUnit() const
 {
 	ASTNode const* s = scope();

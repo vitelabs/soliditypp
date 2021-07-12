@@ -638,9 +638,11 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			[[fallthrough]];
 		case FunctionType::Kind::External:
 		case FunctionType::Kind::DelegateCall:
+		case FunctionType::Kind::SendMessage:  // Solidity++
 			_functionCall.expression().accept(*this);
 			appendExternalFunctionCall(function, arguments, _functionCall.annotation().tryCall);
 			break;
+			
 		case FunctionType::Kind::BareCallCode:
 			solAssert(false, "Callcode has been removed.");
 		case FunctionType::Kind::Creation:
@@ -727,9 +729,17 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			// Note that function is not the original function, but the ".value" function.
 			// Its values of gasSet and valueSet is equal to the original function's though.
 			if (function.valueSet())
+			{
 				m_context << Instruction::POP;
-			arguments.front()->accept(*this);
+				m_context << Instruction::POP;  // Solidity++: one more POP for additional tokenId
+			}
+			// Solidity++:
+			// arguments.front()->accept(*this);
+			for (auto const& arg: arguments) {
+				arg->accept(*this);
+			}
 			break;
+
 		case FunctionType::Kind::Send:
 		case FunctionType::Kind::Transfer:
 			_functionCall.expression().accept(*this);
@@ -737,9 +747,12 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			// Will be zeroed if we send more than zero ether.
 			m_context << u256(evmasm::GasCosts::callStipend);
 			acceptAndConvert(*arguments.front(), *function.parameterTypes().front(), true);
+
+			// Solidity++: no gas
 			// gas <- gas * !value
-			m_context << Instruction::SWAP1 << Instruction::DUP2;
-			m_context << Instruction::ISZERO << Instruction::MUL << Instruction::SWAP1;
+			// m_context << Instruction::SWAP1 << Instruction::DUP2;
+			// m_context << Instruction::ISZERO << Instruction::MUL << Instruction::SWAP1;
+			
 			appendExternalFunctionCall(
 				FunctionType(
 					TypePointers{},
@@ -2048,6 +2061,13 @@ void ExpressionCompiler::endVisit(Identifier const& _identifier)
 	{
 		// no-op
 	}
+	// Solidity++: message -> function
+	else if (dynamic_cast<MessageDefinition const*>(declaration))
+	{
+		auto const* function = dynamic_cast<MessageDefinition const*>(declaration);
+		u256 identifier = FunctionType(*function).externalIdentifier();
+		m_context << identifier;
+	}
 	else
 	{
 		solAssert(false, "Identifier type not expected in expression context.");
@@ -2336,7 +2356,9 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		_arguments.size() == _functionType.parameterTypes().size(), ""
 	);
 
-	// Assumed stack content here:
+	// Solidity++: modify CALL stack layout
+
+	// From:
 	// <stack top>
 	// value [if _functionType.valueSet()]
 	// gas [if _functionType.gasSet()]
@@ -2344,15 +2366,24 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// function identifier [unless bare]
 	// contract address
 
+	// To:
+	// <stack top>
+	// value [if _functionType.valueSet()]
+	// tokenId [if _functionType.valueSet()]
+	// self object [if bound - moved to top right away]
+	// function identifier [unless bare]
+	// contract address
+
 	unsigned selfSize = _functionType.bound() ? _functionType.selfType()->sizeOnStack() : 0;
-	unsigned gasValueSize = (_functionType.gasSet() ? 1u : 0u) + (_functionType.valueSet() ? 1u : 0u);
-	unsigned contractStackPos = m_context.currentToBaseStackOffset(1 + gasValueSize + selfSize + (_functionType.isBareCall() ? 0 : 1));
-	unsigned gasStackPos = m_context.currentToBaseStackOffset(gasValueSize);
+	unsigned valueSize = (_functionType.valueSet() ? 2 : 0);
+	unsigned contractStackPos = m_context.currentToBaseStackOffset(1 + valueSize + selfSize + (_functionType.isBareCall() ? 0 : 1));
+	// unsigned gasStackPos = m_context.currentToBaseStackOffset(gasValueSize);
 	unsigned valueStackPos = m_context.currentToBaseStackOffset(1);
+	unsigned tokenStackPos = m_context.currentToBaseStackOffset(2);
 
 	// move self object to top
 	if (_functionType.bound())
-		utils().moveToStackTop(gasValueSize, _functionType.selfType()->sizeOnStack());
+		utils().moveToStackTop(0, _functionType.selfType()->sizeOnStack());
 
 	auto funKind = _functionType.kind();
 
@@ -2370,11 +2401,12 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		solAssert(!_functionType.isBareCall(), "");
 	}
 
-	ReturnInfo const returnInfo{m_context.evmVersion(), _functionType};
-	bool const haveReturndatacopy = m_context.evmVersion().supportsReturndata();
-	unsigned const retSize = returnInfo.estimatedReturnSize;
-	bool const dynamicReturnSize = returnInfo.dynamicReturnSize;
-	TypePointers const& returnTypes = returnInfo.returnTypes;
+	// Solidity++: no return data
+	// ReturnInfo const returnInfo{m_context.evmVersion(), _functionType};
+	// bool const haveReturndatacopy = m_context.evmVersion().supportsReturndata();
+	// unsigned const retSize = returnInfo.estimatedReturnSize;
+	// bool const dynamicReturnSize = returnInfo.dynamicReturnSize;
+	// TypePointers const& returnTypes = returnInfo.returnTypes;
 
 	// Evaluate arguments.
 	TypePointers argumentTypes;
@@ -2396,33 +2428,34 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		// Output area will be "start of input area" - 32.
 		// The reason is that a failing ECRecover cannot be detected, it will just return
 		// zero bytes (which we cannot detect).
-		solAssert(0 < retSize && retSize <= 32, "");
+		// solAssert(0 < retSize && retSize <= 32, "");
 		utils().fetchFreeMemoryPointer();
 		m_context << u256(0) << Instruction::DUP2 << Instruction::MSTORE;
 		m_context << u256(32) << Instruction::ADD;
 		utils().storeFreeMemoryPointer();
 	}
 
-	if (!m_context.evmVersion().canOverchargeGasForCall())
-	{
-		// Touch the end of the output area so that we do not pay for memory resize during the call
-		// (which we would have to subtract from the gas left)
-		// We could also just use MLOAD; POP right before the gas calculation, but the optimizer
-		// would remove that, so we use MSTORE here.
-		if (!_functionType.gasSet() && retSize > 0)
-		{
-			m_context << u256(0);
-			utils().fetchFreeMemoryPointer();
-			// This touches too much, but that way we save some rounding arithmetic
-			m_context << u256(retSize) << Instruction::ADD << Instruction::MSTORE;
-		}
-	}
+	// Solidity++: no gas
+	// if (!m_context.evmVersion().canOverchargeGasForCall())
+	// {
+	// 	// Touch the end of the output area so that we do not pay for memory resize during the call
+	// 	// (which we would have to subtract from the gas left)
+	// 	// We could also just use MLOAD; POP right before the gas calculation, but the optimizer
+	// 	// would remove that, so we use MSTORE here.
+	// 	if (!_functionType.gasSet() && retSize > 0)
+	// 	{
+	// 		m_context << u256(0);
+	// 		utils().fetchFreeMemoryPointer();
+	// 		// This touches too much, but that way we save some rounding arithmetic
+	// 		m_context << u256(retSize) << Instruction::ADD << Instruction::MSTORE;
+	// 	}
+	// }
 
 	// Copy function identifier to memory.
 	utils().fetchFreeMemoryPointer();
 	if (!_functionType.isBareCall())
 	{
-		m_context << dupInstruction(2 + gasValueSize + CompilerUtils::sizeOnStack(argumentTypes));
+		m_context << dupInstruction(2 + valueSize + CompilerUtils::sizeOnStack(argumentTypes));
 		utils().storeInMemoryDynamic(IntegerType(8 * CompilerUtils::dataStartOffset), false);
 	}
 
@@ -2443,6 +2476,8 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		encodeForLibraryCall
 	);
 
+	// Solidity++:
+	// From:
 	// Stack now:
 	// <stack top>
 	// input_memory_end
@@ -2451,35 +2486,60 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// function identifier [unless bare]
 	// contract address
 
+	// To:
+	// Stack now:
+	// <stack top>
+	// input_memory_end
+	// value [if _functionType.valueSet()]
+	// tokenId [if _functionType.valueSet()]
+	// function identifier [unless bare]
+	// contract address
+
 	// Output data will replace input data, unless we have ECRecover (then, output
 	// area will be 32 bytes just before input area).
 	// put on stack: <size of output> <memory pos of output> <size of input> <memory pos of input>
-	m_context << u256(retSize);
-	utils().fetchFreeMemoryPointer(); // This is the start of input
-	if (funKind == FunctionType::Kind::ECRecover)
-	{
-		// In this case, output is 32 bytes before input and has already been cleared.
-		m_context << u256(32) << Instruction::DUP2 << Instruction::SUB << Instruction::SWAP1;
-		// Here: <input end> <output size> <outpos> <input pos>
-		m_context << Instruction::DUP1 << Instruction::DUP5 << Instruction::SUB;
-		m_context << Instruction::SWAP1;
-	}
-	else
-	{
-		m_context << Instruction::DUP1 << Instruction::DUP4 << Instruction::SUB;
-		m_context << Instruction::DUP2;
-	}
 
-	// CALL arguments: outSize, outOff, inSize, inOff (already present up to here)
-	// [value,] addr, gas (stack top)
+	// Solidity++: no output data
+	// m_context << u256(retSize);
+
+	utils().fetchFreeMemoryPointer(); // This is the start of input
+
+	// if (funKind == FunctionType::Kind::ECRecover)
+	// {
+	// 	// In this case, output is 32 bytes before input and has already been cleared.
+	// 	m_context << u256(32) << Instruction::DUP2 << Instruction::SUB << Instruction::SWAP1;
+	// 	// Here: <input end> <output size> <outpos> <input pos>
+	// 	m_context << Instruction::DUP1 << Instruction::DUP5 << Instruction::SUB;
+	// 	m_context << Instruction::SWAP1;
+	// }
+	// else
+	// {
+	// 	m_context << Instruction::DUP1 << Instruction::DUP4 << Instruction::SUB;
+	// 	m_context << Instruction::DUP2;
+	// }
+
+	// Solidity++:
+	m_context << Instruction::DUP1 << Instruction::DUP3 << Instruction::SUB;
+	m_context << Instruction::SWAP1;
+
+	// Solidity++:
+	// CALL arguments: inSize, inOff (already present up to here)
+	// [value,] addr (stack top)
 	if (isDelegateCall)
 		solAssert(!_functionType.valueSet(), "Value set for delegatecall");
 	else if (useStaticCall)
 		solAssert(!_functionType.valueSet(), "Value set for staticcall");
 	else if (_functionType.valueSet())
+	{
 		m_context << dupInstruction(m_context.baseToCurrentStackOffset(valueStackPos));
+		m_context << dupInstruction(m_context.baseToCurrentStackOffset(tokenStackPos));  // Solidity++: push tokenId
+	}
 	else
-		m_context << u256(0);
+	{
+		// Solidity++: 0 VITE
+		m_context << u256(0) << u256("0x2445f6e5cde8c2c70e44");
+	}
+	
 	m_context << dupInstruction(m_context.baseToCurrentStackOffset(contractStackPos));
 
 	bool existenceChecked = false;
@@ -2491,46 +2551,54 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		existenceChecked = true;
 	}
 
-	if (_functionType.gasSet())
-		m_context << dupInstruction(m_context.baseToCurrentStackOffset(gasStackPos));
-	else if (m_context.evmVersion().canOverchargeGasForCall())
-		// Send all gas (requires tangerine whistle EVM)
-		m_context << Instruction::GAS;
-	else
-	{
-		// send all gas except the amount needed to execute "SUB" and "CALL"
-		// @todo this retains too much gas for now, needs to be fine-tuned.
-		u256 gasNeededByCaller = evmasm::GasCosts::callGas(m_context.evmVersion()) + 10;
-		if (_functionType.valueSet())
-			gasNeededByCaller += evmasm::GasCosts::callValueTransferGas;
-		if (!existenceChecked)
-			gasNeededByCaller += evmasm::GasCosts::callNewAccountGas; // we never know
-		m_context << gasNeededByCaller << Instruction::GAS << Instruction::SUB;
-	}
+	// Solidity++: remove gas
+
+	// if (_functionType.gasSet())
+	// 	m_context << dupInstruction(m_context.baseToCurrentStackOffset(gasStackPos));
+	// else if (m_context.evmVersion().canOverchargeGasForCall())
+	// 	// Send all gas (requires tangerine whistle EVM)
+	// 	m_context << Instruction::GAS;
+	// else
+	// {
+	// 	// send all gas except the amount needed to execute "SUB" and "CALL"
+	// 	// @todo this retains too much gas for now, needs to be fine-tuned.
+	// 	u256 gasNeededByCaller = evmasm::GasCosts::callGas(m_context.evmVersion()) + 10;
+	// 	if (_functionType.valueSet())
+	// 		gasNeededByCaller += evmasm::GasCosts::callValueTransferGas;
+	// 	if (!existenceChecked)
+	// 		gasNeededByCaller += evmasm::GasCosts::callNewAccountGas; // we never know
+	// 	m_context << gasNeededByCaller << Instruction::GAS << Instruction::SUB;
+	// }
+
+
 	// Order is important here, STATICCALL might overlap with DELEGATECALL.
 	if (isDelegateCall)
 		m_context << Instruction::DELEGATECALL;
 	else if (useStaticCall)
 		m_context << Instruction::STATICCALL;
 	else
-		m_context << Instruction::CALL;
+		m_context << Instruction::CALL;  // Solidity++: @todo redefine CALLCODE opcode
 
 	unsigned remainsSize =
 		2u + // contract address, input_memory_end
-		(_functionType.valueSet() ? 1 : 0) +
-		(_functionType.gasSet() ? 1 : 0) +
+		(_functionType.valueSet() ? 2 : 0) +  // Solidity++: amount + tokenId
+		// (_functionType.gasSet() ? 1 : 0) +  // Solidity++: no gas
 		(!_functionType.isBareCall() ? 1 : 0);
+
 
 	evmasm::AssemblyItem endTag = m_context.newTag();
 
-	if (!returnSuccessConditionAndReturndata && !_tryCall)
-	{
-		// Propagate error condition (if CALL pushes 0 on stack).
-		m_context << Instruction::ISZERO;
-		m_context.appendConditionalRevert(true);
-	}
-	else
-		m_context << swapInstruction(remainsSize);
+	m_context << Instruction::STOP;
+
+	// if (!returnSuccessConditionAndReturndata && !_tryCall)
+	// {
+	// 	// Propagate error condition (if CALL pushes 0 on stack).
+	// 	m_context << Instruction::ISZERO;
+	// 	m_context.appendConditionalRevert(true);
+	// }
+	// else
+	// 	m_context << swapInstruction(remainsSize);
+
 	utils().popStackSlots(remainsSize);
 
 	// Only success flag is remaining on stack.
@@ -2566,43 +2634,45 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		utils().fetchFreeMemoryPointer();
 		m_context << Instruction::SUB << Instruction::MLOAD;
 	}
-	else if (!returnTypes.empty())
-	{
-		utils().fetchFreeMemoryPointer();
-		// Stack: return_data_start
 
-		// The old decoder did not allocate any memory (i.e. did not touch the free
-		// memory pointer), but kept references to the return data for
-		// (statically-sized) arrays
-		bool needToUpdateFreeMemoryPtr = false;
-		if (dynamicReturnSize || m_context.useABICoderV2())
-			needToUpdateFreeMemoryPtr = true;
-		else
-			for (auto const& retType: returnTypes)
-				if (dynamic_cast<ReferenceType const*>(retType))
-					needToUpdateFreeMemoryPtr = true;
+	// Solidity++: no return data
+	// else if (!returnTypes.empty())
+	// {
+	// 	utils().fetchFreeMemoryPointer();
+	// 	// Stack: return_data_start
 
-		// Stack: return_data_start
-		if (dynamicReturnSize)
-		{
-			solAssert(haveReturndatacopy, "");
-			m_context.appendInlineAssembly("{ returndatacopy(return_data_start, 0, returndatasize()) }", {"return_data_start"});
-		}
-		else
-			solAssert(retSize > 0, "");
-		// Always use the actual return length, and not our calculated expected length, if returndatacopy is supported.
-		// This ensures it can catch badly formatted input from external calls.
-		m_context << (haveReturndatacopy ? evmasm::AssemblyItem(Instruction::RETURNDATASIZE) : u256(retSize));
-		// Stack: return_data_start return_data_size
-		if (needToUpdateFreeMemoryPtr)
-			m_context.appendInlineAssembly(R"({
-				// round size to the next multiple of 32
-				let newMem := add(start, and(add(size, 0x1f), not(0x1f)))
-				mstore(0x40, newMem)
-			})", {"start", "size"});
+	// 	// The old decoder did not allocate any memory (i.e. did not touch the free
+	// 	// memory pointer), but kept references to the return data for
+	// 	// (statically-sized) arrays
+	// 	bool needToUpdateFreeMemoryPtr = false;
+	// 	if (dynamicReturnSize || m_context.useABICoderV2())
+	// 		needToUpdateFreeMemoryPtr = true;
+	// 	else
+	// 		for (auto const& retType: returnTypes)
+	// 			if (dynamic_cast<ReferenceType const*>(retType))
+	// 				needToUpdateFreeMemoryPtr = true;
 
-		utils().abiDecode(returnTypes, true);
-	}
+	// 	// Stack: return_data_start
+	// 	if (dynamicReturnSize)
+	// 	{
+	// 		solAssert(haveReturndatacopy, "");
+	// 		m_context.appendInlineAssembly("{ returndatacopy(return_data_start, 0, returndatasize()) }", {"return_data_start"});
+	// 	}
+	// 	else
+	// 		solAssert(retSize > 0, "");
+	// 	// Always use the actual return length, and not our calculated expected length, if returndatacopy is supported.
+	// 	// This ensures it can catch badly formatted input from external calls.
+	// 	m_context << (haveReturndatacopy ? evmasm::AssemblyItem(Instruction::RETURNDATASIZE) : u256(retSize));
+	// 	// Stack: return_data_start return_data_size
+	// 	if (needToUpdateFreeMemoryPtr)
+	// 		m_context.appendInlineAssembly(R"({
+	// 			// round size to the next multiple of 32
+	// 			let newMem := add(start, and(add(size, 0x1f), not(0x1f)))
+	// 			mstore(0x40, newMem)
+	// 		})", {"start", "size"});
+
+	// 	utils().abiDecode(returnTypes, true);
+	// }
 
 	if (_tryCall)
 	{

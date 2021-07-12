@@ -219,6 +219,8 @@ public:
 			return "private";
 		case Visibility::External:
 			return "external";
+		case Visibility::Offchain:
+			return "offchain";
 		default:
 			solAssert(false, "Invalid visibility specifier.");
 		}
@@ -1141,6 +1143,50 @@ private:
 	bool m_anonymous = false;
 };
 
+
+/**
+ * Solidity++:
+ * Definition of a message call (async external function in another contract).
+ */
+class MessageDefinition: public CallableDeclaration, public StructurallyDocumented, public ScopeOpener
+{
+public:
+	MessageDefinition(
+		int64_t _id,
+		SourceLocation const& _location,
+		ASTPointer<ASTString> const& _name,
+		ASTPointer<StructuredDocumentation> const& _documentation,
+		ASTPointer<ParameterList> const& _parameters
+	):
+		CallableDeclaration(_id, _location, _name, Visibility::Default, _parameters),
+		StructurallyDocumented(_documentation)
+	{
+	}
+
+	void accept(ASTVisitor& _visitor) override;
+	void accept(ASTConstVisitor& _visitor) const override;
+
+	TypePointer type() const override;
+	FunctionTypePointer functionType(bool /*_internal*/) const override;
+
+	bool isVisibleInDerivedContracts() const override { return true; }
+	bool isVisibleViaContractTypeAccess() const override { return false; /* TODO */ }
+
+	MessageDefinitionAnnotation& annotation() const override;
+
+	CallableDeclaration const& resolveVirtual(
+		ContractDefinition const&,
+		ContractDefinition const*
+	) const override
+	{
+		return *this;
+	}
+
+private:
+
+};
+
+
 /**
  * Pseudo AST node that is used as declaration for "this", "msg", "tx", "block" and the global
  * functions when such an identifier is encountered. Will never have a valid location in the source code
@@ -1685,6 +1731,33 @@ public:
 private:
 	ASTPointer<FunctionCall> m_eventCall;
 };
+
+/**
+ * Solidity++:
+ * The send statement is used to send messages: send MessageName(arg1, ..., argn)
+ */
+class SendStatement: public Statement
+{
+public:
+    explicit SendStatement(
+			int64_t _id,
+            SourceLocation const& _location,
+            ASTPointer<ASTString> const& _docString,
+            ASTPointer<Expression> const& _toAddress,
+            ASTPointer<FunctionCall> _functionCall
+    ):
+        Statement(_id, _location, _docString), m_toAddress(_toAddress), m_messageCall(std::move(_functionCall)) {}
+    void accept(ASTVisitor& _visitor) override;
+    void accept(ASTConstVisitor& _visitor) const override;
+
+    Expression const& toAddress() const { return *m_toAddress; }
+    FunctionCall const& messageCall() const { return *m_messageCall; }
+
+private:
+    ASTPointer<Expression> m_toAddress;
+    ASTPointer<FunctionCall> m_messageCall;
+};
+
 
 /**
  * Definition of one or more variables as a statement inside a function.
