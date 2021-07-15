@@ -1880,7 +1880,8 @@ ASTPointer<Expression> Parser::parsePrimaryExpression()
 		expression = nodeFactory.createNode<Literal>(token, getLiteralAndAdvance());
 		break;
 	case Token::Number:
-		if (TokenTraits::isEtherSubdenomination(m_scanner->peekNextToken()))
+	 	// Solidity++: recognize Vite Subdenomination
+		if (TokenTraits::isEtherSubdenomination(m_scanner->peekNextToken()) || TokenTraits::isViteSubdenomination(m_scanner->peekNextToken()))
 		{
 			ASTPointer<ASTString> literal = getLiteralAndAdvance();
 			nodeFactory.markEndPosition();
