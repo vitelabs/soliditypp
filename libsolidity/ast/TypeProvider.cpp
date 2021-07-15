@@ -259,7 +259,7 @@ Type const* TypeProvider::fromElementaryTypeName(ElementaryTypeNameToken const& 
 }
 
 TypePointer TypeProvider::fromElementaryTypeName(string const& _name)
-{
+{	
 	vector<string> nameParts;
 	boost::split(nameParts, _name, boost::is_any_of(" "));
 	solAssert(nameParts.size() == 1 || nameParts.size() == 2, "Cannot parse elementary type: " + _name);

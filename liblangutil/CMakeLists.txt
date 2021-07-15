@@ -5,8 +5,8 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/CharStream.h
 	${ORIGINAL_SOURCE_DIR}/ErrorReporter.cpp
 	${ORIGINAL_SOURCE_DIR}/ErrorReporter.h
-	${ORIGINAL_SOURCE_DIR}/EVMVersion.h
-	${ORIGINAL_SOURCE_DIR}/EVMVersion.cpp
+	EVMVersion.h
+	EVMVersion.cpp
 	${ORIGINAL_SOURCE_DIR}/Exceptions.cpp
 	${ORIGINAL_SOURCE_DIR}/Exceptions.h
 	${ORIGINAL_SOURCE_DIR}/ParserBase.cpp

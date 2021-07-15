@@ -128,6 +128,8 @@ namespace solidity::langutil
 	K(Send, "send", 0)												   \
 	\
 	K(Event, "event", 0)                                               \
+	/* Solidity++: message keyword */								   \
+	K(Message, "message", 0)                                           \
 	K(External, "external", 0)                                         \
 	K(Fallback, "fallback", 0)                                         \
 	K(For, "for", 0)                                                   \
@@ -245,7 +247,6 @@ namespace solidity::langutil
 	K(Var, "var", 0)                                                   \
 	\
 	/* Solidity++ keywords */                            			   \
-	K(Message, "message", 0)                                           \
 	K(OnMessage, "onMessage", 0)                                       \
 	K(Getter, "getter", 0)                                       	   \
 	\
