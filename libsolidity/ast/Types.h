@@ -458,7 +458,7 @@ class IntegerType: public Type
 public:
 	enum class Modifier
 	{
-		Unsigned, Signed
+		Unsigned, Signed, Address, TokenId  // Solidity++: add address and tokenid modifier
 	};
 
 	explicit IntegerType(unsigned _bits, Modifier _modifier = Modifier::Unsigned);
@@ -1180,6 +1180,13 @@ public:
 		Declaration,
 		/// Solidity++:
 		SendMessage,
+		BLAKE2B,
+		PrevHash,
+		AccountHeight,
+		FromHash,
+		Random64,
+		NextRandom,
+		Balance,
 	};
 
 	/// Creates the type of a function.

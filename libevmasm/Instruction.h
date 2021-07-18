@@ -46,6 +46,8 @@ enum class Instruction: uint8_t
 	SAR,				///< bitwise SAR operation
 
 	KECCAK256 = 0x20,		///< compute KECCAK-256 hash
+	// Solidity++:
+	BLAKE2B = 0x21,		///< compute BLAKE2B hash
 
 	ADDRESS = 0x30,		///< get address of currently executing account
 	BALANCE,			///< get balance of the given account
@@ -70,8 +72,14 @@ enum class Instruction: uint8_t
 	NUMBER,				///< get the block's number
 	DIFFICULTY,			///< get the block's difficulty
 	GASLIMIT,			///< get the block's gas limit
-	CHAINID,			///< get the config's chainid param
-	SELFBALANCE,		///< get balance of the current account
+
+	// Solidity++: solidity++ instructions
+	TOKENID = 0x46,
+	ACCOUNTHEIGHT,
+	PREVHASH,
+	FROMHASH,
+	SEED,
+	RANDOM,
 
 	POP = 0x50,			///< remove item from stack
 	MLOAD,				///< load word from memory
@@ -169,6 +177,10 @@ enum class Instruction: uint8_t
 	EIP615_RETURNSUB,          ///< return to subroutine jumped from -- not part of Instructions.cpp
 	EIP615_PUTLOCAL,           ///< pop top of stack to local variable -- not part of Instructions.cpp
 	EIP615_GETLOCAL,           ///< push local variable to top of stack -- not part of Instructions.cpp
+
+	// Solidity++: move conflicted instructions to 0xe group
+	CHAINID = 0xe0,		///< get the config's chainid param
+	SELFBALANCE,		///< get balance of the current account
 
 	CREATE = 0xf0,		///< create a new account with associated code
 	CALL,				///< message-call into an account

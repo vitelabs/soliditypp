@@ -1252,6 +1252,67 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 		case FunctionType::Kind::MetaType:
 			// No code to generate.
 			break;
+
+		// Solidity++:
+		case FunctionType::Kind::BLAKE2B:
+		{
+			solAssert(arguments.size() == 1, "blake2b() takes only one argument.");
+			solAssert(!function.padArguments(), "blake2b() takes only padded arguments.");
+			TypePointer const& argType = arguments.front()->annotation().type;
+			solAssert(argType, "");
+			arguments.front()->accept(*this);
+			if (auto const* stringLiteral = dynamic_cast<StringLiteralType const*>(argType))
+				// Optimization: Compute blake2b on string literals at compile-time.
+				m_context << u256(blake2b(stringLiteral->value()));
+			else if (*argType == *TypeProvider::bytesMemory() || *argType == *TypeProvider::stringMemory())
+			{
+				// Optimization: If type is bytes or string, then do not encode,
+				// but directly compute blake2b on memory.
+				ArrayUtils(m_context).retrieveLength(*TypeProvider::bytesMemory());
+				m_context << Instruction::SWAP1 << u256(0x20) << Instruction::ADD;
+				m_context << Instruction::BLAKE2B;
+			}
+			else
+			{
+				utils().fetchFreeMemoryPointer();
+				utils().packedEncode({argType}, TypePointers());
+				utils().toSizeAfterFreeMemoryPointer();
+				m_context << Instruction::BLAKE2B;
+			}
+			break;
+		}
+		case FunctionType::Kind::Balance:
+		{
+			arguments.front()->accept(*this);
+			m_context << Instruction::BALANCE;
+			break;
+		}
+		case FunctionType::Kind::PrevHash:
+		{
+            m_context << Instruction::PREVHASH;
+            break;
+		}
+		case FunctionType::Kind::AccountHeight:
+		{
+			m_context << Instruction::ACCOUNTHEIGHT;
+			break;
+		}
+		case FunctionType::Kind::FromHash:
+		{
+			m_context << Instruction::FROMHASH;
+			break;
+		}
+		case FunctionType::Kind::NextRandom:
+		{
+			m_context << Instruction::RANDOM;
+			break;
+		}
+		case FunctionType::Kind::Random64:
+		{
+			m_context << Instruction::SEED;
+			break;
+		}
+
 		}
 	}
 	return false;
@@ -1697,6 +1758,13 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 		{
 			// no-op
 		}
+		
+		// Solidity++:
+		else if (member == "tokenid")
+			m_context << Instruction::TOKENID;
+		else if (member == "amount")
+			m_context << Instruction::CALLVALUE;
+
 		else
 			solAssert(false, "Unknown magic member.");
 		break;

@@ -159,7 +159,15 @@ std::map<std::string, Instruction> const solidity::evmasm::c_instructions =
 	{ "CREATE2", Instruction::CREATE2 },
 	{ "REVERT", Instruction::REVERT },
 	{ "INVALID", Instruction::INVALID },
-	{ "SELFDESTRUCT", Instruction::SELFDESTRUCT }
+	{ "SELFDESTRUCT", Instruction::SELFDESTRUCT },
+	// Solidity++:
+	{ "ACCOUNTHEIGHT", Instruction::ACCOUNTHEIGHT },
+	{ "PREVHASH", Instruction::PREVHASH },
+	{ "FROMHASH", Instruction::FROMHASH },
+	{ "SEED", Instruction::SEED },
+	{ "RANDOM", Instruction::RANDOM },
+	{ "BLAKE2B", Instruction::BLAKE2B },
+	{ "TOKENID", Instruction::TOKENID }
 };
 
 static std::map<Instruction, InstructionInfo> const c_instructionInfo =
@@ -314,7 +322,15 @@ static std::map<Instruction, InstructionInfo> const c_instructionInfo =
 	{ Instruction::CREATE2,		{ "CREATE2",		0, 4, 1, true, Tier::Special } },
 	{ Instruction::REVERT,		{ "REVERT",		0, 2, 0, true, Tier::Zero } },
 	{ Instruction::INVALID,		{ "INVALID",		0, 0, 0, true, Tier::Zero } },
-	{ Instruction::SELFDESTRUCT,	{ "SELFDESTRUCT",		0, 1, 0, true, Tier::Special } }
+	{ Instruction::SELFDESTRUCT,	{ "SELFDESTRUCT",		0, 1, 0, true, Tier::Special } },
+	// Solidity++: new instructions:
+	{ Instruction::BLAKE2B,	{ "BLAKE2B",			0, 2, 1, true, Tier::Special } },
+	{ Instruction::TOKENID,		{ "TOKENID",		0, 0, 1, false, Tier::Base } },
+	{ Instruction::ACCOUNTHEIGHT,	{ "ACCOUNTHEIGHT",		0, 0, 1, false, Tier::Ext } },
+	{ Instruction::PREVHASH,	{ "PREVHASH",		0, 0, 1, false, Tier::Ext } },
+	{ Instruction::FROMHASH,	{ "FROMHASH",		0, 0, 1, false, Tier::Ext } },
+	{ Instruction::RANDOM,		{ "RANDOM",			0, 0, 1, false, Tier::Ext } },
+	{ Instruction::SEED,		{ "SEED",			0, 0, 1, false, Tier::Ext } }
 };
 
 void solidity::evmasm::eachInstruction(

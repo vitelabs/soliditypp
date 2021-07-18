@@ -353,8 +353,6 @@ void ContractCompiler::appendInternalSelector(
 	// unless we have at least 5 functions.
 
 	// Start with some comparisons to avoid overflow, then do the actual comparison.
-	for(auto id : _ids) {cout << id.hex() << ", ";}
-	cout << endl;
 
 	bool split = false;
 	if (_ids.size() <= 4)

@@ -2893,7 +2893,6 @@ string FunctionType::richIdentifier() const
 	case Kind::RIPEMD160: id += "ripemd160"; break;
 	case Kind::GasLeft: id += "gasleft"; break;
 	case Kind::Event: id += "event"; break;
-	case Kind::SendMessage: id += "message"; break;  // Solidity++
 	case Kind::SetGas: id += "setgas"; break;
 	case Kind::SetValue: id += "setvalue"; break;
 	case Kind::BlockHash: id += "blockhash"; break;
@@ -2911,6 +2910,16 @@ string FunctionType::richIdentifier() const
 	case Kind::ABIEncodeWithSignature: id += "abiencodewithsignature"; break;
 	case Kind::ABIDecode: id += "abidecode"; break;
 	case Kind::MetaType: id += "metatype"; break;
+	// Solidity++:
+	case Kind::SendMessage: id += "messagecall"; break;
+	case Kind::BLAKE2B: id += "blake2b"; break;
+	case Kind::PrevHash: id += "prevhash"; break;
+	case Kind::AccountHeight: id += "accountheight"; break;
+	case Kind::FromHash: id += "fromhash"; break;
+	case Kind::Random64: id += "random64"; break;
+	case Kind::NextRandom: id += "nextrandom"; break;
+	case Kind::Balance: id += "balance"; break;
+
 	}
 	id += "_" + stateMutabilityToString(m_stateMutability);
 	id += identifierList(m_parameterTypes) + "returns" + identifierList(m_returnParameterTypes);
@@ -3603,6 +3612,7 @@ bool FunctionType::padArguments() const
 	case Kind::SHA256:
 	case Kind::RIPEMD160:
 	case Kind::KECCAK256:
+	case Kind::BLAKE2B:
 	case Kind::ABIEncodePacked:
 		return false;
 	default:
@@ -3893,11 +3903,13 @@ MemberList::MemberMap MagicType::nativeMembers(ASTNode const*) const
 		});
 	case Kind::Message:
 		return MemberList::MemberMap({
-			{"sender", TypeProvider::payableAddress()},  // Solidity++: sender is a payable address
 			{"gas", TypeProvider::uint256()},
 			{"value", TypeProvider::uint256()},
 			{"data", TypeProvider::array(DataLocation::CallData)},
-			{"sig", TypeProvider::fixedBytes(4)}
+			{"sig", TypeProvider::fixedBytes(4)},
+			{"sender", TypeProvider::payableAddress()},  // Solidity++: sender is a payable address
+			{"tokenid", TypeProvider::viteTokenId()}, // Solidity++: get tx's transfer token id
+			{"amount", TypeProvider::uint256()}  // Solidity++: get tx's transfer amount
 		});
 	case Kind::Transaction:
 		return MemberList::MemberMap({

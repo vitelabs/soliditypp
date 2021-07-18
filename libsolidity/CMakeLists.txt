@@ -20,7 +20,7 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/analysis/DocStringTagParser.h
 	${ORIGINAL_SOURCE_DIR}/analysis/ImmutableValidator.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/ImmutableValidator.h
-	${ORIGINAL_SOURCE_DIR}/analysis/GlobalContext.cpp
+	analysis/GlobalContext.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/GlobalContext.h
 	${ORIGINAL_SOURCE_DIR}/analysis/NameAndTypeResolver.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/NameAndTypeResolver.h

@@ -45,7 +45,7 @@ add_library(evmasm ${sources})
 target_link_libraries(evmasm PUBLIC solutil)
 ```
 
-## Unit Tests
+## Tests
 测试用例分为Automatic Tests和Interactive Tests两类。
 
 ### Automatic Tests
@@ -73,4 +73,12 @@ for (auto const& basePath: searchPath)
         return basePath;
     }
 }
+```
+
+### 在Python中计算测试数据
+#### blake2b
+```python
+import hashlib
+hashlib.blake2b(b"abc", digest_size=32).hexdigest()
+hashlib.blake2b(bytes([0] * 10), digest_size=32).hexdigest()
 ```

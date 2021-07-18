@@ -87,6 +87,11 @@ bytes compileFirstExpression(
 		sourceUnit = Parser(errorReporter, solidity::test::CommonOptions::get().evmVersion()).parse(
 			make_shared<Scanner>(CharStream(sourceCode, ""))
 		);
+		if (!errors.empty()) {
+		    for(auto error : errors) {
+                cout << "Error: " << error.get()->what() << endl;
+            }
+		}
 		if (!sourceUnit)
 			return bytes();
 	}
@@ -187,6 +192,178 @@ BOOST_AUTO_TEST_CASE(int_with_vite_vite_subdenomination)
 	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
 }
 
+BOOST_AUTO_TEST_CASE(accountheight)
+{
+	char const* sourceCode = R"(
+		contract test {
+			constructor() {
+				uint a = accountheight();
+			}
+		}
+	)";
+
+	bytes code = compileFirstExpression(sourceCode);
+
+	bytes expectation({uint8_t(Instruction::ACCOUNTHEIGHT)});
+	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
+}
+
+BOOST_AUTO_TEST_CASE(prevhash)
+{
+	char const* sourceCode = R"(
+		contract test {
+			constructor() {
+				bytes32 a = prevhash();
+			}
+		}
+	)";
+
+	bytes code = compileFirstExpression(sourceCode);
+
+	bytes expectation({uint8_t(Instruction::PREVHASH)});
+	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
+}
+
+BOOST_AUTO_TEST_CASE(fromhash)
+{
+	char const* sourceCode = R"(
+		contract test {
+			constructor() {
+				bytes32 a = fromhash();
+			}
+		}
+	)";
+
+	bytes code = compileFirstExpression(sourceCode);
+
+	bytes expectation({uint8_t(Instruction::FROMHASH)});
+	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
+}
+
+BOOST_AUTO_TEST_CASE(random64)
+{
+	char const* sourceCode = R"(
+		contract test {
+			constructor() {
+				uint64 a = random64();
+			}
+		}
+	)";
+
+	bytes code = compileFirstExpression(sourceCode);
+
+	bytes expectation({uint8_t(Instruction::SEED)});
+	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
+}
+
+BOOST_AUTO_TEST_CASE(nextrandom)
+{
+	char const* sourceCode = R"(
+		contract test {
+			constructor() {
+				uint64 a = nextrandom();
+			}
+		}
+	)";
+
+	bytes code = compileFirstExpression(sourceCode);
+
+	bytes expectation({uint8_t(Instruction::RANDOM)});
+	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
+}
+
+BOOST_AUTO_TEST_CASE(blake2b_compute_at_compile_time)
+{
+	char const* sourceCode = R"(
+		contract test {
+			constructor() {
+				bytes32 a = blake2b("abc");
+			}
+		}
+	)";
+
+	bytes code = compileFirstExpression(sourceCode);
+
+	bytes expectation({
+		uint8_t(Instruction::PUSH32), 0xbd, 0xdd, 0x81, 0x3c, 0x63, 0x42, 0x39, 0x72, 0x31, 0x71, 0xef, 0x3f, 0xee, 0x98, 0x57, 0x9b, 0x94, 0x96, 0x4e, 0x3b, 0xb1, 0xcb, 0x3e, 0x42, 0x72, 0x62, 0xc8, 0xc0, 0x68, 0xd5, 0x23, 0x19
+		});
+	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
+}
+
+BOOST_AUTO_TEST_CASE(blake2b)
+{
+	char const* sourceCode = R"(
+		contract test {
+			function f(bytes memory data) public {
+				blake2b(data);
+			}
+        }
+	)";
+
+	bytes code = compileFirstExpression(sourceCode, {}, {{"test", "f", "data"}});
+
+	bytes expectation({
+		uint8_t(Instruction::DUP1),
+        uint8_t(Instruction::DUP1),
+        uint8_t(Instruction::MLOAD),
+        uint8_t(Instruction::SWAP1),
+        uint8_t(Instruction::PUSH1), 0x20,
+        uint8_t(Instruction::ADD),
+        uint8_t(Instruction::BLAKE2B)
+		});
+	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
+}
+
+ BOOST_AUTO_TEST_CASE(msg_tokenid)
+ {
+ 	char const* sourceCode = R"(
+ 		contract test {
+ 			function f() public {
+ 	            tokenId t = msg.tokenid;
+ 			}
+ 		}
+ 	)";
+
+ 	bytes code = compileFirstExpression(sourceCode, {}, {});
+
+ 	bytes expectation({uint8_t(Instruction::TOKENID)});
+ 	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
+ }
+
+BOOST_AUTO_TEST_CASE(msg_amount)
+{
+    char const* sourceCode = R"(
+        contract test {
+            function f() public {
+                uint a = msg.amount;
+            }
+        }
+    )";
+
+    bytes code = compileFirstExpression(sourceCode, {}, {});
+
+    bytes expectation({uint8_t(Instruction::CALLVALUE)});
+    BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
+}
+
+ BOOST_AUTO_TEST_CASE(balance)
+ {
+ 	char const* sourceCode = R"(
+ 		contract test {
+ 			function f(tokenId token) public {
+ 				balance(token);
+ 			}
+ 		}
+ 	)";
+
+ 	bytes code = compileFirstExpression(sourceCode, {}, {{"test", "f", "token"}});
+
+ 	bytes expectation({
+ 	    uint8_t(Instruction::DUP1),
+ 	    uint8_t(Instruction::BALANCE)
+ 	});
+ 	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
+ }
 BOOST_AUTO_TEST_SUITE_END()
 
 } // end namespaces

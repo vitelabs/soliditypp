@@ -354,7 +354,7 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 			else if (currentTokenValue == Token::Using)
 				subNodes.push_back(parseUsingDirective());
 			else
-				fatalParserError(9182_error, "Function, variable, struct or modifier declaration expected.");
+				fatalParserError(9182_error, "Function, variable, struct or modifier declaration expected, but got " + tokenName(currentTokenValue));
 		}
 	}
 	catch (FatalError const&)
