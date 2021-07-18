@@ -1,0 +1,7 @@
+pragma soliditypp >=0.4.2;
+
+contract Test {
+   message m1(uint a);
+   message m2(string a);
+   message m3(bytes a);
+}

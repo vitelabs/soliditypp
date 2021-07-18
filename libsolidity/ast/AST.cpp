@@ -562,6 +562,12 @@ bool Declaration::isEventParameter() const
 	return dynamic_cast<EventDefinition const*>(scope());
 }
 
+bool Declaration::isMessageParameter() const
+{
+    solAssert(scope(), "");
+    return dynamic_cast<MessageDefinition const*>(scope());
+}
+
 DeclarationAnnotation& Declaration::annotation() const
 {
 	return initAnnotation<DeclarationAnnotation>();
@@ -705,7 +711,7 @@ set<VariableDeclaration::Location> VariableDeclaration::allowedDataLocations() c
 {
 	using Location = VariableDeclaration::Location;
 
-	if (!hasReferenceOrMappingType() || isStateVariable() || isEventParameter())
+	if (!hasReferenceOrMappingType() || isStateVariable() || isEventParameter() || isMessageParameter())
 		return set<Location>{ Location::Unspecified };
 	else if (isCallableOrCatchParameter())
 	{

@@ -12,7 +12,7 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/analysis/ControlFlowGraph.h
 	${ORIGINAL_SOURCE_DIR}/analysis/DeclarationContainer.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/DeclarationContainer.h
-	${ORIGINAL_SOURCE_DIR}/analysis/DeclarationTypeChecker.cpp
+	analysis/DeclarationTypeChecker.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/DeclarationTypeChecker.h
 	${ORIGINAL_SOURCE_DIR}/analysis/DocStringAnalyser.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/DocStringAnalyser.h

@@ -255,6 +255,10 @@ public:
 	/// @returns true if this is a declaration of a parameter of an event.
 	bool isEventParameter() const;
 
+	/// Solidity++:
+    /// @returns true if this is a declaration of a parameter of a message.
+    bool isMessageParameter() const;
+
 	/// @returns the type of expressions referencing this declaration.
 	/// This can only be called once types of variable declarations have already been resolved.
 	virtual TypePointer type() const = 0;
