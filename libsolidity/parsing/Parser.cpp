@@ -7,7 +7,6 @@
  */
 
 #include <libsolidity/parsing/Parser.h>
-
 #include <libsolidity/interface/Version.h>
 #include <libyul/AsmParser.h>
 #include <libyul/AST.h>
@@ -17,11 +16,12 @@
 #include <liblangutil/SemVerHandler.h>
 #include <liblangutil/SourceLocation.h>
 #include <libyul/backends/evm/EVMDialect.h>
-#include <boost/algorithm/string/trim.hpp>
-#include <boost/algorithm/string/replace.hpp>
 #include <cctype>
 #include <vector>
 #include <regex>
+
+#include <boost/algorithm/string.hpp>
+#include <libsolutil/Blake2.h>
 
 using namespace std;
 using namespace solidity::langutil;
@@ -189,7 +189,7 @@ ASTPointer<PragmaDirective> Parser::parsePragmaDirective()
 	nodeFactory.markEndPosition();
 	expectToken(Token::Semicolon);
 
-	if (literals.size() >= 1 && literals[0] == "solidity")
+	if (literals.size() >= 1 && (literals[0] == "solidity" || literals[0] == "soliditypp"))
 	{
 		parsePragmaVersion(
 			nodeFactory.location(),
@@ -354,7 +354,7 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 			else if (currentTokenValue == Token::Using)
 				subNodes.push_back(parseUsingDirective());
 			else
-				fatalParserError(9182_error, "Function, variable, struct or modifier declaration expected.");
+				fatalParserError(9182_error, "Function, variable, struct or modifier declaration expected, but got " + tokenName(currentTokenValue));
 		}
 	}
 	catch (FatalError const&)
@@ -568,7 +568,8 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 			m_scanner->currentToken() == Token::Constructor ||
 			m_scanner->currentToken() == Token::Fallback ||
 			m_scanner->currentToken() == Token::Receive ||
-			m_scanner->currentToken() == Token::OnMessage
+			m_scanner->currentToken() == Token::OnMessage ||
+			m_scanner->currentToken() == Token::Getter
 		)
 		{
 			std::string expected = std::map<Token, std::string>{
@@ -576,6 +577,7 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 				{Token::Fallback, "fallback function"},
 				{Token::Receive, "receive function"},
 				{Token::OnMessage, "onMessage function"},
+				{Token::Getter, "offchain function"},
 			}.at(m_scanner->currentToken());
 			name = make_shared<ASTString>(TokenTraits::toString(m_scanner->currentToken()));
 			string message{
@@ -592,13 +594,13 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 		else
 			name = expectIdentifierToken();
 	}
-	// Solitity++: parse message listener function
+	// Solidity++: parse message listener function
 	else if(kind == Token::OnMessage)
 	{
 		m_scanner->next();
 		name = expectIdentifierToken();
 	}
-	// Solitity++: parse offchain getter function 
+	// Solidity++: parse offchain getter function 
 	else if(kind == Token::Getter)
 	{
 		m_scanner->next();
@@ -612,6 +614,18 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 	}
 
 	FunctionHeaderParserResult header = parseFunctionHeader(false);
+
+	// Solidity++: the visibility of onMessage is external
+	if(kind == Token::OnMessage)
+	{
+		header.visibility = Visibility::External;
+	}
+
+	// Solidity++: the visibility of getter is offchain
+	if(kind == Token::Getter)
+	{
+		header.visibility = Visibility::Offchain;
+	}
 
 	ASTPointer<Block> block;
 	nodeFactory.markEndPosition();
@@ -905,7 +919,8 @@ ASTPointer<EventDefinition> Parser::parseEventDefinition()
 	return nodeFactory.createNode<EventDefinition>(name, documentation, parameters, anonymous);
 }
 
-ASTPointer<EventDefinition> Parser::parseMessageDefinition()
+// Solidity++:
+ASTPointer<MessageDefinition> Parser::parseMessageDefinition()
 {
 	RecursionGuard recursionGuard(*this);
 	ASTNodeFactory nodeFactory(*this);
@@ -918,15 +933,9 @@ ASTPointer<EventDefinition> Parser::parseMessageDefinition()
 	options.allowIndexed = true;
 	ASTPointer<ParameterList> parameters = parseParameterList(options);
 
-	bool anonymous = false;
-	if (m_scanner->currentToken() == Token::Anonymous)
-	{
-		anonymous = true;
-		m_scanner->next();
-	}
 	nodeFactory.markEndPosition();
 	expectToken(Token::Semicolon);
-	return nodeFactory.createNode<EventDefinition>(name, documentation, parameters, anonymous);
+	return nodeFactory.createNode<MessageDefinition>(name, documentation, parameters);
 }
 
 ASTPointer<UsingForDirective> Parser::parseUsingDirective()
@@ -1028,7 +1037,7 @@ ASTPointer<TypeName> Parser::parseTypeName()
 		nodeFactory.markEndPosition();
 		m_scanner->next();
 		auto stateMutability = elemTypeName.token() == Token::Address
-			? optional<StateMutability>{StateMutability::NonPayable}
+			? optional<StateMutability>{StateMutability::Payable} // Solidity++: default mutability of address is payable
 			: nullopt;
 		if (TokenTraits::isStateMutabilitySpecifier(m_scanner->currentToken()))
 		{
@@ -1222,6 +1231,11 @@ ASTPointer<Statement> Parser::parseStatement(bool _allowUnchecked)
 		case Token::Emit:
 			statement = parseEmitStatement(docString);
 			break;
+		// Solidity++: parse send statement
+		case Token::Send:
+			statement = parseSendStatement(docString);
+			break;
+
 		case Token::Identifier:
 			if (m_insideModifier && m_scanner->currentLiteral() == "_")
 				{
@@ -1450,6 +1464,49 @@ ASTPointer<EmitStatement> Parser::parseEmitStatement(ASTPointer<ASTString> const
 	auto statement = nodeFactory.createNode<EmitStatement>(_docString, eventCall);
 	return statement;
 }
+
+
+// Solidity++: parse send statement
+ASTPointer<SendStatement> Parser::parseSendStatement(ASTPointer<ASTString> const& _docString)
+{
+	expectToken(Token::Send);
+	expectToken(Token::LParen);
+
+	ASTNodeFactory nodeFactory(*this);
+	
+	ASTPointer<Expression> toAddress = parseExpression();
+	expectToken(Token::Comma, false);
+	m_scanner->next();
+
+	ASTNodeFactory messageCallNodeFactory(*this);
+
+	if (m_scanner->currentToken() != Token::Identifier)
+		fatalParserError(5620_error, "Expected message name or path.");
+
+	IndexAccessedPath iap;
+	while (true)
+	{
+		iap.path.push_back(parseIdentifier());
+		if (m_scanner->currentToken() != Token::Period)
+			break;
+		m_scanner->next();
+	}
+
+	auto messageName = expressionFromIndexAccessStructure(iap);
+	expectToken(Token::LParen);
+
+	vector<ASTPointer<Expression>> arguments;
+	vector<ASTPointer<ASTString>> names;
+	std::tie(arguments, names) = parseFunctionCallArguments();
+	messageCallNodeFactory.markEndPosition();
+	nodeFactory.markEndPosition();
+	expectToken(Token::RParen);
+	expectToken(Token::RParen);
+	auto messageCall = messageCallNodeFactory.createNode<FunctionCall>(messageName, arguments, names);
+	auto statement = nodeFactory.createNode<SendStatement>(_docString, toAddress, messageCall);
+	return statement;
+}
+
 
 ASTPointer<Statement> Parser::parseSimpleStatement(ASTPointer<ASTString> const& _docString)
 {
@@ -1823,7 +1880,8 @@ ASTPointer<Expression> Parser::parsePrimaryExpression()
 		expression = nodeFactory.createNode<Literal>(token, getLiteralAndAdvance());
 		break;
 	case Token::Number:
-		if (TokenTraits::isEtherSubdenomination(m_scanner->peekNextToken()))
+	 	// Solidity++: recognize Vite Subdenomination
+		if (TokenTraits::isEtherSubdenomination(m_scanner->peekNextToken()) || TokenTraits::isViteSubdenomination(m_scanner->peekNextToken()))
 		{
 			ASTPointer<ASTString> literal = getLiteralAndAdvance();
 			nodeFactory.markEndPosition();
@@ -2222,4 +2280,5 @@ ASTPointer<ASTString> Parser::getLiteralAndAdvance()
 	m_scanner->next();
 	return identifier;
 }
+
 }

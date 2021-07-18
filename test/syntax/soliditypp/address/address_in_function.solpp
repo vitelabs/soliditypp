@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma soliditypp >=0.4.2;
+
+contract AddressInFunction {
+    function f(address a) internal pure returns (address) {
+        return a;
+    }
+}
+// ----

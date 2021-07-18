@@ -66,5 +66,4 @@ add_subdirectory(libevmasm)
 add_subdirectory(libsmtutil)
 add_subdirectory(libsolidity)
 add_subdirectory(solppc)
-
 add_subdirectory(test)

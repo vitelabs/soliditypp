@@ -17,7 +17,7 @@
 #include <libsolutil/CommonData.h>
 #include <libsolutil/CommonIO.h>
 #include <libsolutil/FunctionSelector.h>
-#include <libsolutil/Keccak256.h>
+#include <libsolutil/Blake2.h>
 #include <libsolutil/UTF8.h>
 
 #include <boost/algorithm/string.hpp>
@@ -389,7 +389,7 @@ BoolResult AddressType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 	else if (m_stateMutability == StateMutability::NonPayable)
 	{
 		if (auto integerType = dynamic_cast<IntegerType const*>(&_convertTo))
-			return (!integerType->isSigned() && integerType->numBits() == 160);
+			return (!integerType->isSigned() && integerType->numBits() == 168); // Solidity++: 168-bit address
 		else if (auto fixedBytesType = dynamic_cast<FixedBytesType const*>(&_convertTo))
 			return (fixedBytesType->numBytes() == 20);
 	}
@@ -410,11 +410,12 @@ string AddressType::canonicalName() const
 	return "address";
 }
 
+// Solidity++:
 u256 AddressType::literalValue(Literal const* _literal) const
 {
 	solAssert(_literal, "");
-	solAssert(_literal->value().substr(0, 2) == "0x", "");
-	return u256(_literal->valueWithoutUnderscores());
+	solAssert(_literal->value().substr(0, 5) == "vite_", "Vite address must begin with vite_");
+	return u256(_literal->getViteAddressHex());
 }
 
 TypeResult AddressType::unaryOperatorResult(Token _operator) const
@@ -452,10 +453,31 @@ MemberList::MemberMap AddressType::nativeMembers(ASTNode const*) const
 	};
 	if (m_stateMutability == StateMutability::Payable)
 	{
+		// Solidity++: redefine address.send()
 		members.emplace_back(MemberList::Member{"send", TypeProvider::function(strings{"uint"}, strings{"bool"}, FunctionType::Kind::Send, false, StateMutability::NonPayable)});
+		// members.emplace_back(MemberList::Member{"send", TypeProvider::function(strings{"message"}, strings{}, FunctionType::Kind::Send, false, StateMutability::Payable)});
+
 		members.emplace_back(MemberList::Member{"transfer", TypeProvider::function(strings{"uint"}, strings(), FunctionType::Kind::Transfer, false, StateMutability::NonPayable)});
 	}
 	return members;
+}
+
+// Solidity++: ViteTokenIdType definitions
+string ViteTokenIdType::richIdentifier() const
+{
+	return "t_tokenId";
+}
+
+string ViteTokenIdType::toString(bool) const
+{
+	return "tokenId";
+}
+
+u256 ViteTokenIdType::literalValue(Literal const* _literal) const
+{
+	solAssert(_literal, "");
+	solAssert(_literal->value().substr(0, 4) == "tti_", "Vite Token Id must begin with tti_");
+	return u256(_literal->getViteTokenIdHex());
 }
 
 namespace
@@ -522,7 +544,7 @@ BoolResult IntegerType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 		return
 			(addressType->stateMutability() != StateMutability::Payable) &&
 			!isSigned() &&
-			(numBits() == 160);
+			(numBits() == 168);  // Solidity++: 168-bit address
 	else if (auto fixedBytesType = dynamic_cast<FixedBytesType const*>(&_convertTo))
 		return (!isSigned() && (numBits() == fixedBytesType->numBytes() * 8));
 	else if (dynamic_cast<EnumType const*>(&_convertTo))
@@ -941,7 +963,7 @@ BoolResult RationalNumberType::isExplicitlyConvertibleTo(Type const& _convertTo)
 			!isNegative() &&
 			!isFractional() &&
 			integerType() &&
-			(integerType()->numBits() <= 160));
+			(integerType()->numBits() <= 168));  // Solidity++: 168-bit address
 	else if (category == Category::Integer)
 		return false;
 	else if (auto enumType = dynamic_cast<EnumType const*>(&_convertTo))
@@ -1197,7 +1219,8 @@ string StringLiteralType::richIdentifier() const
 {
 	// Since we have to return a valid identifier and the string itself may contain
 	// anything, we hash it.
-	return "t_stringliteral_" + util::toHex(util::keccak256(m_value).asBytes());
+	// Solidity++: keccak256 -> blake2b
+	return "t_stringliteral_" + util::toHex(util::blake2b(m_value).asBytes());
 }
 
 bool StringLiteralType::operator==(Type const& _other) const
@@ -2723,6 +2746,28 @@ FunctionType::FunctionType(EventDefinition const& _event):
 			);
 }
 
+// Solidity++:
+FunctionType::FunctionType(MessageDefinition const& _message):
+	m_kind(Kind::SendMessage),
+	m_stateMutability(StateMutability::Payable),
+	m_declaration(&_message)
+{
+	for (ASTPointer<VariableDeclaration> const& var: _message.parameters())
+	{
+		m_parameterNames.push_back(var->name());
+		m_parameterTypes.push_back(var->annotation().type);
+	}
+
+	solAssert(
+			m_parameterNames.size() == m_parameterTypes.size(),
+			"Parameter names list must match parameter types list!"
+			);
+	solAssert(
+			m_returnParameterNames.size() == m_returnParameterTypes.size(),
+			"Return parameter names list must match return parameter types list!"
+			);
+}
+
 FunctionType::FunctionType(FunctionTypeName const& _typeName):
 	m_parameterNames(_typeName.parameterTypes().size(), ""),
 	m_returnParameterNames(_typeName.returnParameterTypes().size(), ""),
@@ -2865,6 +2910,16 @@ string FunctionType::richIdentifier() const
 	case Kind::ABIEncodeWithSignature: id += "abiencodewithsignature"; break;
 	case Kind::ABIDecode: id += "abidecode"; break;
 	case Kind::MetaType: id += "metatype"; break;
+	// Solidity++:
+	case Kind::SendMessage: id += "messagecall"; break;
+	case Kind::BLAKE2B: id += "blake2b"; break;
+	case Kind::PrevHash: id += "prevhash"; break;
+	case Kind::AccountHeight: id += "accountheight"; break;
+	case Kind::FromHash: id += "fromhash"; break;
+	case Kind::Random64: id += "random64"; break;
+	case Kind::NextRandom: id += "nextrandom"; break;
+	case Kind::Balance: id += "balance"; break;
+
 	}
 	id += "_" + stateMutabilityToString(m_stateMutability);
 	id += identifierList(m_parameterTypes) + "returns" + identifierList(m_returnParameterTypes);
@@ -3374,6 +3429,7 @@ string FunctionType::externalSignature() const
 	case Kind::External:
 	case Kind::DelegateCall:
 	case Kind::Event:
+	case Kind::SendMessage:  // Solidity++
 	case Kind::Declaration:
 		break;
 	default:
@@ -3408,7 +3464,8 @@ u256 FunctionType::externalIdentifier() const
 
 string FunctionType::externalIdentifierHex() const
 {
-	return util::FixedHash<4>(util::keccak256(externalSignature())).hex();
+	// Solidity++: Use blake2b instead of Keccak256
+	return util::FixedHash<4>(util::blake2b(externalSignature())).hex();
 }
 
 bool FunctionType::isPure() const
@@ -3555,6 +3612,7 @@ bool FunctionType::padArguments() const
 	case Kind::SHA256:
 	case Kind::RIPEMD160:
 	case Kind::KECCAK256:
+	case Kind::BLAKE2B:
 	case Kind::ABIEncodePacked:
 		return false;
 	default:
@@ -3845,11 +3903,13 @@ MemberList::MemberMap MagicType::nativeMembers(ASTNode const*) const
 		});
 	case Kind::Message:
 		return MemberList::MemberMap({
-			{"sender", TypeProvider::address()},
 			{"gas", TypeProvider::uint256()},
 			{"value", TypeProvider::uint256()},
 			{"data", TypeProvider::array(DataLocation::CallData)},
-			{"sig", TypeProvider::fixedBytes(4)}
+			{"sig", TypeProvider::fixedBytes(4)},
+			{"sender", TypeProvider::payableAddress()},  // Solidity++: sender is a payable address
+			{"tokenid", TypeProvider::viteTokenId()}, // Solidity++: get tx's transfer token id
+			{"amount", TypeProvider::uint256()}  // Solidity++: get tx's transfer amount
 		});
 	case Kind::Transaction:
 		return MemberList::MemberMap({

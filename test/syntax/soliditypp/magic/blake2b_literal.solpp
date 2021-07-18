@@ -1,0 +1,7 @@
+pragma soliditypp >=0.4.0;
+contract Test {
+	bytes32 hash;
+    onMessage test() {
+		hash = blake2b("abc");
+	}
+}

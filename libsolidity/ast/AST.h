@@ -219,6 +219,8 @@ public:
 			return "private";
 		case Visibility::External:
 			return "external";
+		case Visibility::Offchain:
+			return "offchain";
 		default:
 			solAssert(false, "Invalid visibility specifier.");
 		}
@@ -498,7 +500,15 @@ public:
 	/// @returns a map of canonical function signatures to FunctionDefinitions
 	/// as intended for use by the ABI.
 	std::map<util::FixedHash<4>, FunctionTypePointer> interfaceFunctions(bool _includeInheritedFunctions = true) const;
+
+	// Solidity++: get offchain functions
+	std::map<util::FixedHash<4>, FunctionTypePointer> offchainFunctions(bool _includeInheritedFunctions = true) const;
+
 	std::vector<std::pair<util::FixedHash<4>, FunctionTypePointer>> const& interfaceFunctionList(bool _includeInheritedFunctions = true) const;
+
+	// Solidity++: get offchain function list
+	std::vector<std::pair<util::FixedHash<4>, FunctionTypePointer>> const& offchainFunctionList(bool _includeInheritedFunctions = true) const;
+
 	/// @returns the EIP-165 compatible interface identifier. This will exclude inherited functions.
 	uint32_t interfaceId() const;
 
@@ -538,6 +548,8 @@ private:
 	bool m_abstract{false};
 
 	util::LazyInit<std::vector<std::pair<util::FixedHash<4>, FunctionTypePointer>>> m_interfaceFunctionList[2];
+	// Solidity++: offchain functions list
+	util::LazyInit<std::vector<std::pair<util::FixedHash<4>, FunctionTypePointer>>> m_offchainFunctionList[2];
 	util::LazyInit<std::vector<EventDefinition const*>> m_interfaceEvents;
 };
 
@@ -822,7 +834,7 @@ public:
 		m_body(_body)
 	{
 		solAssert(_kind == Token::Constructor || _kind == Token::Function || _kind == Token::Fallback || _kind == Token::Receive || _kind == Token::OnMessage || _kind == Token::Getter, "");
-		solAssert(isOrdinary() || isOnMessage() || isGetter() == !name().empty(), "");
+		solAssert(isOrdinary() || isOnMessage() || isOffchain() == !name().empty(), "");
 	}
 
 	void accept(ASTVisitor& _visitor) override;
@@ -835,7 +847,7 @@ public:
 	bool isFallback() const { return m_kind == Token::Fallback; }
 	bool isReceive() const { return m_kind == Token::Receive; }
 	bool isOnMessage() const { return m_kind == Token::OnMessage; }
-	bool isGetter() const { return m_kind == Token::Getter; }
+	bool isOffchain() const { return m_kind == Token::Getter; }
 	bool isFree() const { return m_free; }
 	Token kind() const { return m_kind; }
 	bool isPayable() const { return m_stateMutability == StateMutability::Payable; }
@@ -851,7 +863,8 @@ public:
 		solAssert(!isFree(), "");
 		return isOrdinary() && visibility() >= Visibility::Public;
 	}
-	bool isPartOfExternalInterface() const override { return isOrdinary() && isPublic(); }
+	// Solidity++: onMessage function is a part of external interface
+	bool isPartOfExternalInterface() const override { return (isOrdinary() || isOnMessage()) && isPublic(); }
 
 	/// @returns the external signature of the function
 	/// That consists of the name of the function followed by the types of the
@@ -1129,6 +1142,50 @@ public:
 private:
 	bool m_anonymous = false;
 };
+
+
+/**
+ * Solidity++:
+ * Definition of a message call (async external function in another contract).
+ */
+class MessageDefinition: public CallableDeclaration, public StructurallyDocumented, public ScopeOpener
+{
+public:
+	MessageDefinition(
+		int64_t _id,
+		SourceLocation const& _location,
+		ASTPointer<ASTString> const& _name,
+		ASTPointer<StructuredDocumentation> const& _documentation,
+		ASTPointer<ParameterList> const& _parameters
+	):
+		CallableDeclaration(_id, _location, _name, Visibility::Default, _parameters),
+		StructurallyDocumented(_documentation)
+	{
+	}
+
+	void accept(ASTVisitor& _visitor) override;
+	void accept(ASTConstVisitor& _visitor) const override;
+
+	TypePointer type() const override;
+	FunctionTypePointer functionType(bool /*_internal*/) const override;
+
+	bool isVisibleInDerivedContracts() const override { return true; }
+	bool isVisibleViaContractTypeAccess() const override { return false; /* TODO */ }
+
+	MessageDefinitionAnnotation& annotation() const override;
+
+	CallableDeclaration const& resolveVirtual(
+		ContractDefinition const&,
+		ContractDefinition const*
+	) const override
+	{
+		return *this;
+	}
+
+private:
+
+};
+
 
 /**
  * Pseudo AST node that is used as declaration for "this", "msg", "tx", "block" and the global
@@ -1676,6 +1733,33 @@ private:
 };
 
 /**
+ * Solidity++:
+ * The send statement is used to send messages: send MessageName(arg1, ..., argn)
+ */
+class SendStatement: public Statement
+{
+public:
+    explicit SendStatement(
+			int64_t _id,
+            SourceLocation const& _location,
+            ASTPointer<ASTString> const& _docString,
+            ASTPointer<Expression> const& _toAddress,
+            ASTPointer<FunctionCall> _functionCall
+    ):
+        Statement(_id, _location, _docString), m_toAddress(_toAddress), m_messageCall(std::move(_functionCall)) {}
+    void accept(ASTVisitor& _visitor) override;
+    void accept(ASTConstVisitor& _visitor) const override;
+
+    Expression const& toAddress() const { return *m_toAddress; }
+    FunctionCall const& messageCall() const { return *m_messageCall; }
+
+private:
+    ASTPointer<Expression> m_toAddress;
+    ASTPointer<FunctionCall> m_messageCall;
+};
+
+
+/**
  * Definition of one or more variables as a statement inside a function.
  * If multiple variables are declared, a value has to be assigned directly.
  * If only a single variable is declared, the value can be missing.
@@ -2174,6 +2258,29 @@ public:
 
 	/// @returns true if this looks like a checksummed address.
 	bool looksLikeAddress() const;
+
+	/// @returns true if this looks like a checksummed vite address.
+	/// Solidity++:
+	bool looksLikeViteAddress() const;
+
+	/// @returns true if this looks like a vite token id.
+	/// Solidity++:
+	bool looksLikeViteTokenId() const;
+
+	/// @returns true if it passes the vite address checksum test.
+	/// Solidity++:
+	bool passesViteAddressChecksum() const;
+
+	// @returns true if it passes the vite token id checksum test.
+	/// Solidity++:
+	bool passesViteTokenIdChecksum() const;
+
+	/// Solidity++: get vite address in hex
+	ASTString getViteAddressHex() const;
+
+	/// Solidity++: get vite token id in hex
+	ASTString getViteTokenIdHex() const;
+
 	/// @returns true if it passes the address checksum test.
 	bool passesAddressChecksum() const;
 	/// @returns the checksummed version of an address (or empty string if not valid)

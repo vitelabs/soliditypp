@@ -1,0 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma soliditypp >=0.4.2;
+
+contract TestAddress {
+   address addr1 = "vite_010203040506070809080706050403020102030412227c8b71";
+}

@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma soliditypp >=0.4.2;
+
+contract BadAddressChecksum {
+    address a = "vite_01020304050607080908070605040302010203041222700000";
+}
+// ----
+// SyntaxError 9429: (110-167): This looks like a Vite address but has an invalid checksum.
