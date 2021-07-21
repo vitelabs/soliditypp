@@ -1,0 +1,5 @@
+pragma soliditypp >=0.4.2;
+contract Test {
+   onMessage test() payable {
+   }
+}

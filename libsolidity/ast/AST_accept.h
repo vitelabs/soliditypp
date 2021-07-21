@@ -687,8 +687,8 @@ void SendStatement::accept(ASTVisitor& _visitor)
 {
 	if (_visitor.visit(*this))
 	{
-		m_toAddress->accept(_visitor);
-		m_messageCall->accept(_visitor);
+		m_address->accept(_visitor);
+		m_expression->accept(_visitor);
 	}
 	_visitor.endVisit(*this);
 }
@@ -697,8 +697,8 @@ void SendStatement::accept(ASTConstVisitor& _visitor) const
 {
 	if (_visitor.visit(*this))
 	{
-		m_toAddress->accept(_visitor);
-		m_messageCall->accept(_visitor);
+        m_address->accept(_visitor);
+        m_expression->accept(_visitor);
 	}
 	_visitor.endVisit(*this);
 }

@@ -641,7 +641,7 @@ bool ASTJsonConverter::visit(EmitStatement const& _node)
 bool ASTJsonConverter::visit(SendStatement const& _node)
 {
 	setJsonNode(_node, "SendStatement", {
-		make_pair("messageCall", toJson(_node.messageCall()))
+		make_pair("expression", toJson(_node.expression()))
 	});
 	return false;
 }

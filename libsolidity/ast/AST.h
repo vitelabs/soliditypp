@@ -1747,19 +1747,19 @@ public:
 			int64_t _id,
             SourceLocation const& _location,
             ASTPointer<ASTString> const& _docString,
-            ASTPointer<Expression> const& _toAddress,
-            ASTPointer<FunctionCall> _functionCall
+            ASTPointer<Expression> const& _address,
+            ASTPointer<Expression> _expression
     ):
-        Statement(_id, _location, _docString), m_toAddress(_toAddress), m_messageCall(std::move(_functionCall)) {}
+        Statement(_id, _location, _docString), m_address(_address), m_expression(std::move(_expression)) {}
     void accept(ASTVisitor& _visitor) override;
     void accept(ASTConstVisitor& _visitor) const override;
 
-    Expression const& toAddress() const { return *m_toAddress; }
-    FunctionCall const& messageCall() const { return *m_messageCall; }
+    Expression const& address() const { return *m_address; }
+    Expression const& expression() const { return *m_expression; }
 
 private:
-    ASTPointer<Expression> m_toAddress;
-    ASTPointer<FunctionCall> m_messageCall;
+    ASTPointer<Expression> m_address;
+    ASTPointer<Expression> m_expression;
 };
 
 

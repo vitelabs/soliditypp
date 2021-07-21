@@ -1323,7 +1323,8 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 	_functionCallOptions.expression().accept(*this);
 
 	// Desired Stack: [salt], [gas], [value]
-	enum Option { Salt, Gas, Value };
+	// Solidity++: desired stack: [tokenId], [amount]
+	enum Option { Salt, Gas, Value, TokenId, Amount };
 
 	vector<Option> presentOptions;
 	FunctionType const& funType = dynamic_cast<FunctionType const&>(
@@ -1331,7 +1332,13 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 	);
 	if (funType.saltSet()) presentOptions.emplace_back(Salt);
 	if (funType.gasSet()) presentOptions.emplace_back(Gas);
-	if (funType.valueSet()) presentOptions.emplace_back(Value);
+
+	// Solidity++:
+	if (funType.valueSet())
+	{
+	    presentOptions.emplace_back(TokenId);
+        presentOptions.emplace_back(Amount);
+	}
 
 	for (size_t i = 0; i < _functionCallOptions.options().size(); ++i)
 	{
@@ -1347,6 +1354,17 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 			newOption = Gas;
 		else if (name == "value")
 			newOption = Value;
+		// Solidity++:
+		else if (name == "token")
+        {
+		    newOption = TokenId;
+		    requiredType = TypeProvider::viteTokenId();
+        }
+		else if (name == "amount")
+        {
+		    newOption = Amount;
+        }
+
 		else
 			solAssert(false, "Unexpected option name!");
 		acceptAndConvert(*_functionCallOptions.options()[i], *requiredType);
@@ -2436,8 +2454,8 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 	// To:
 	// <stack top>
-	// value [if _functionType.valueSet()]
-	// tokenId [if _functionType.valueSet()]
+	// amount [if _functionType.valueSet()]
+	// token  [if _functionType.valueSet()]
 	// self object [if bound - moved to top right away]
 	// function identifier [unless bare]
 	// contract address
@@ -2558,8 +2576,8 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// Stack now:
 	// <stack top>
 	// input_memory_end
-	// value [if _functionType.valueSet()]
-	// tokenId [if _functionType.valueSet()]
+	// amount [if _functionType.valueSet()]
+	// token  [if _functionType.valueSet()]
 	// function identifier [unless bare]
 	// contract address
 
