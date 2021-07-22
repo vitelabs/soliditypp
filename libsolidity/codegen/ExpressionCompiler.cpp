@@ -1292,6 +1292,11 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
             m_context << Instruction::PREVHASH;
             break;
 		}
+        case FunctionType::Kind::Height:
+        {
+            m_context << Instruction::NUMBER;
+            break;
+        }
 		case FunctionType::Kind::AccountHeight:
 		{
 			m_context << Instruction::ACCOUNTHEIGHT;

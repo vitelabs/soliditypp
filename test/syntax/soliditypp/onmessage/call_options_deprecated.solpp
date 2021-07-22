@@ -8,4 +8,4 @@ contract Test {
    }
 }
 // ----
-// TypeError 10001: (105-116): Cannot set option "value" in Solidity++. Valid options are "token" and "amount".
+// TypeError 100201: (105-116): Cannot set option "value" in Solidity++. Valid options are "token" and "amount".

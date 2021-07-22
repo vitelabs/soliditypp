@@ -192,6 +192,22 @@ BOOST_AUTO_TEST_CASE(int_with_vite_vite_subdenomination)
 	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
 }
 
+BOOST_AUTO_TEST_CASE(height)
+{
+    char const* sourceCode = R"(
+    contract test {
+        constructor() {
+                uint a = height();
+            }
+        }
+    )";
+
+    bytes code = compileFirstExpression(sourceCode);
+
+    bytes expectation({uint8_t(Instruction::NUMBER)});
+    BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
+}
+
 BOOST_AUTO_TEST_CASE(accountheight)
 {
 	char const* sourceCode = R"(

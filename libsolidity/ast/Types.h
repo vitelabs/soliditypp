@@ -1182,6 +1182,7 @@ public:
 		SendMessage,
 		BLAKE2B,
 		PrevHash,
+        Height,
 		AccountHeight,
 		FromHash,
 		Random64,

@@ -2914,6 +2914,7 @@ string FunctionType::richIdentifier() const
 	case Kind::SendMessage: id += "messagecall"; break;
 	case Kind::BLAKE2B: id += "blake2b"; break;
 	case Kind::PrevHash: id += "prevhash"; break;
+	case Kind::Height: id += "height"; break;
 	case Kind::AccountHeight: id += "accountheight"; break;
 	case Kind::FromHash: id += "fromhash"; break;
 	case Kind::Random64: id += "random64"; break;

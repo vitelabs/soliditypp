@@ -2552,7 +2552,7 @@ bool TypeChecker::visit(FunctionCallOptions const& _functionCallOptions)
 		if (name == "value" || name == "gas" || name == "salt")
 		{
             m_errorReporter.typeError(
-                    10001_error,
+                    100201_error,
                     _functionCallOptions.location(),
                     "Cannot set option \"" + name + "\" in Solidity++. Valid options are \"token\" and \"amount\"."
             );
