@@ -2633,14 +2633,17 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	
 	m_context << dupInstruction(m_context.baseToCurrentStackOffset(contractStackPos));
 
-	bool existenceChecked = false;
-	// Check the target contract exists (has code) for non-low-level calls.
-	if (funKind == FunctionType::Kind::External || funKind == FunctionType::Kind::DelegateCall)
-	{
-		m_context << Instruction::DUP1 << Instruction::EXTCODESIZE << Instruction::ISZERO;
-		m_context.appendConditionalRevert(false, "Target contract does not contain code");
-		existenceChecked = true;
-	}
+
+	// Solidity++: disable contract existence
+
+    //	bool existenceChecked = false;
+    //	// Check the target contract exists (has code) for non-low-level calls.
+    //	if (funKind == FunctionType::Kind::External || funKind == FunctionType::Kind::DelegateCall)
+    //	{
+    //		m_context << Instruction::DUP1 << Instruction::EXTCODESIZE << Instruction::ISZERO;
+    //		m_context.appendConditionalRevert(false, "Target contract does not contain code");
+    //		existenceChecked = true;
+    //	}
 
 	// Solidity++: remove gas
 
