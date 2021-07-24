@@ -940,7 +940,7 @@ public:
 		solAssert(!isSuper(), "");
 		return encodingType()->calldataEncodedSize(_padded);
 	}
-	unsigned storageBytes() const override { solAssert(!isSuper(), ""); return 20; }
+	unsigned storageBytes() const override { solAssert(!isSuper(), ""); return 21; }  // Solidity++: 168-bit address
 	bool leftAligned() const override { solAssert(!isSuper(), ""); return false; }
 	bool isValueType() const override { return !isSuper(); }
 	bool nameable() const override { return !isSuper(); }
