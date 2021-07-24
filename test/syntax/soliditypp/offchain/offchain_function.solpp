@@ -1,0 +1,9 @@
+pragma soliditypp >=0.4.2;
+
+contract Test {
+    uint a = 123;
+
+    function getA() offchain view returns (uint) {
+        return a;
+    }
+}

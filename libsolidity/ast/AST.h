@@ -239,10 +239,10 @@ public:
 	ASTString const& name() const { return *m_name; }
 	bool noVisibilitySpecified() const { return m_visibility == Visibility::Default; }
 	Visibility visibility() const { return m_visibility == Visibility::Default ? defaultVisibility() : m_visibility; }
-	bool isPublic() const { return visibility() >= Visibility::Public; }
-	virtual bool isVisibleInContract() const { return visibility() != Visibility::External; }
+	bool isPublic() const { return visibility() >= Visibility::Public && visibility() < Visibility::Offchain; }  // Solidity++
+	virtual bool isVisibleInContract() const { return visibility() != Visibility::External && visibility() != Visibility::Offchain; }  // Solidity++
 	virtual bool isVisibleInDerivedContracts() const { return isVisibleInContract() && visibility() >= Visibility::Internal; }
-	bool isVisibleAsLibraryMember() const { return visibility() >= Visibility::Internal; }
+	bool isVisibleAsLibraryMember() const { return visibility() >= Visibility::Internal && visibility() < Visibility::Offchain; }  // Solidity++
 	virtual bool isVisibleViaContractTypeAccess() const { return false; }
 
 	virtual bool isLValue() const { return false; }
@@ -850,8 +850,8 @@ public:
 	bool isConstructor() const { return m_kind == Token::Constructor; }
 	bool isFallback() const { return m_kind == Token::Fallback; }
 	bool isReceive() const { return m_kind == Token::Receive; }
-	bool isOnMessage() const { return m_kind == Token::OnMessage; }
-	bool isOffchain() const { return m_kind == Token::Getter; }
+	bool isOnMessage() const { return m_kind == Token::OnMessage; }  // Solidity++
+	bool isOffchain() const { return m_kind == Token::Getter || visibility() == Visibility::Offchain; }  // Solidity++
 	bool isFree() const { return m_free; }
 	Token kind() const { return m_kind; }
 	bool isPayable() const { return m_stateMutability == StateMutability::Payable; }

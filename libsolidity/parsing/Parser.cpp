@@ -418,6 +418,9 @@ Visibility Parser::parseVisibilitySpecifier()
 		case Token::External:
 			visibility = Visibility::External;
 			break;
+        case Token::Offchain:
+            visibility = Visibility::Offchain;
+            break;
 		default:
 			solAssert(false, "Invalid visibility specifier.");
 	}
