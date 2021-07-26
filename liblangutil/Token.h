@@ -252,6 +252,7 @@ namespace solidity::langutil
 	/* Solidity++ keywords */                            			   \
 	K(OnMessage, "onMessage", 0)                                       \
 	K(Getter, "getter", 0)                                       	   \
+    K(Async, "async", 0)                                \
 	\
 	/* Yul-specific tokens, but not keywords. */                       \
 	T(Leave, "leave", 0)                                               \
@@ -299,6 +300,9 @@ namespace TokenTraits
 	{
 		return op == Token::Pure || op == Token::View || op == Token::Payable;
 	}
+
+	// Solidity++: execution behavior specifier: sync / async
+    constexpr bool isExecutionBehaviorSpecifier(Token op) { return op == Token::Async; }
 
 	constexpr bool isEtherSubdenomination(Token op) { return op >= Token::SubWei && op <= Token::SubEther; }
 	

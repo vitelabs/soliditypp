@@ -51,8 +51,8 @@ set(sources
 	ast/ASTJsonConverter.h
 	${ORIGINAL_SOURCE_DIR}/ast/ASTUtils.cpp
 	${ORIGINAL_SOURCE_DIR}/ast/ASTUtils.h
-	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonImporter.cpp
-	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonImporter.h
+	ast/ASTJsonImporter.cpp
+	ast/ASTJsonImporter.h
 	ast/ASTVisitor.h
 	${ORIGINAL_SOURCE_DIR}/ast/ExperimentalFeatures.h
 	ast/Types.cpp

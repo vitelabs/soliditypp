@@ -59,6 +59,7 @@ private:
 		ASTPointer<ParameterList> returnParameters;
 		Visibility visibility = Visibility::Default;
 		StateMutability stateMutability = StateMutability::NonPayable;
+        ExecutionBehavior executionBehavior = ExecutionBehavior::Sync;
 		std::vector<ASTPointer<ModifierInvocation>> modifiers;
 	};
 
@@ -76,6 +77,9 @@ private:
 	Visibility parseVisibilitySpecifier();
 	ASTPointer<OverrideSpecifier> parseOverrideSpecifier();
 	StateMutability parseStateMutability();
+
+    ExecutionBehavior parseExecutionBehavior(); // Solidity++
+
 	FunctionHeaderParserResult parseFunctionHeader(bool _isStateVariable);
 	ASTPointer<ASTNode> parseFunctionDefinition(bool _freeFunction = false);
 	ASTPointer<StructDefinition> parseStructDefinition();

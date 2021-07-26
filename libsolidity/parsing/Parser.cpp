@@ -480,6 +480,23 @@ StateMutability Parser::parseStateMutability()
 	return stateMutability;
 }
 
+// Solidity++: parse execution behavior
+ExecutionBehavior Parser::parseExecutionBehavior()
+{
+    ExecutionBehavior executionBehavior(ExecutionBehavior::Sync);
+    Token token = m_scanner->currentToken();
+    switch (token)
+    {
+        case Token::Async:
+            executionBehavior = ExecutionBehavior::Async;
+            break;
+        default:
+            solAssert(false, "Invalid execution behavior specifier.");
+    }
+    m_scanner->next();
+    return executionBehavior;
+}
+
 Parser::FunctionHeaderParserResult Parser::parseFunctionHeader(bool _isStateVariable)
 {
 	RecursionGuard recursionGuard(*this);
@@ -527,6 +544,22 @@ Parser::FunctionHeaderParserResult Parser::parseFunctionHeader(bool _isStateVari
 			else
 				result.stateMutability = parseStateMutability();
 		}
+		// Solidity++: execution behavior of a function: sync / async
+        else if (TokenTraits::isExecutionBehaviorSpecifier(token))
+        {
+            if (result.executionBehavior != ExecutionBehavior::Sync)
+            {
+                parserError(
+                        100101_error,
+                        "Execution behavior already specified as \"" +
+                        executionBehaviorToString(result.executionBehavior) +
+                        "\"."
+                );
+                m_scanner->next();
+            }
+            else
+                result.executionBehavior = parseExecutionBehavior();
+        }
 		else if (!_isStateVariable && token == Token::Override)
 		{
 			if (result.overrides)
@@ -610,10 +643,11 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 	if(kind == Token::OnMessage)
 	{
 		header.visibility = Visibility::External;
+		header.executionBehavior = ExecutionBehavior::Async;
 	}
 
 	// Solidity++: the visibility of getter is offchain
-	if(kind == Token::Getter)
+	else if(kind == Token::Getter)
 	{
 		header.visibility = Visibility::Offchain;
 	}
@@ -631,6 +665,7 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 		name,
 		header.visibility,
 		header.stateMutability,
+		header.executionBehavior,
 		_freeFunction,
 		kind,
 		header.isVirtual,

@@ -2629,6 +2629,7 @@ TypePointer TupleType::closestTemporaryType(Type const* _targetType) const
 FunctionType::FunctionType(FunctionDefinition const& _function, Kind _kind):
 	m_kind(_kind),
 	m_stateMutability(_function.stateMutability()),
+	m_executionBehavior(_function.executionBehavior()),  // Solidity++
 	m_declaration(&_function)
 {
 	solAssert(
@@ -2750,6 +2751,7 @@ FunctionType::FunctionType(EventDefinition const& _event):
 FunctionType::FunctionType(MessageDefinition const& _message):
 	m_kind(Kind::SendMessage),
 	m_stateMutability(StateMutability::Payable),
+	m_executionBehavior(ExecutionBehavior::Async),
 	m_declaration(&_message)
 {
 	for (ASTPointer<VariableDeclaration> const& var: _message.parameters())
@@ -2772,7 +2774,8 @@ FunctionType::FunctionType(FunctionTypeName const& _typeName):
 	m_parameterNames(_typeName.parameterTypes().size(), ""),
 	m_returnParameterNames(_typeName.returnParameterTypes().size(), ""),
 	m_kind(_typeName.visibility() == Visibility::External ? Kind::External : Kind::Internal),
-	m_stateMutability(_typeName.stateMutability())
+	m_stateMutability(_typeName.stateMutability()),
+    m_executionBehavior(ExecutionBehavior::Async)
 {
 	if (_typeName.isPayable())
 		solAssert(m_kind == Kind::External, "Internal payable function type used.");
@@ -3169,6 +3172,7 @@ FunctionTypePointer FunctionType::interfaceFunctionType() const
 		m_kind,
 		m_arbitraryParameters,
 		m_stateMutability,
+		m_executionBehavior,
 		m_declaration
 	);
 }
@@ -3224,6 +3228,7 @@ MemberList::MemberMap FunctionType::nativeMembers(ASTNode const* _scope) const
 						Kind::SetValue,
 						false,
 						StateMutability::Pure,
+						ExecutionBehavior::Sync,
 						nullptr,
 						m_gasSet,
 						m_valueSet,
@@ -3242,6 +3247,7 @@ MemberList::MemberMap FunctionType::nativeMembers(ASTNode const* _scope) const
 					Kind::SetGas,
 					false,
 					StateMutability::Pure,
+					ExecutionBehavior::Sync,
 					nullptr,
 					m_gasSet,
 					m_valueSet,
@@ -3302,6 +3308,7 @@ TypePointer FunctionType::mobileType() const
 		m_kind,
 		m_arbitraryParameters,
 		m_stateMutability,
+		m_executionBehavior,
 		m_declaration,
 		m_gasSet,
 		m_valueSet,
@@ -3397,6 +3404,10 @@ bool FunctionType::equalExcludingStateMutability(FunctionType const& _other) con
 
 	if (bound() != _other.bound())
 		return false;
+
+    // Solidity++:
+    if(executionBehavior() != _other.executionBehavior())
+        return false;
 
 	solAssert(!bound() || *selfType() == *_other.selfType(), "");
 
@@ -3509,6 +3520,7 @@ TypePointer FunctionType::copyAndSetCallOptions(bool _setGas, bool _setValue, bo
 		m_kind,
 		m_arbitraryParameters,
 		m_stateMutability,
+		m_executionBehavior,
 		m_declaration,
 		m_gasSet || _setGas,
 		m_valueSet || _setValue,
@@ -3533,6 +3545,7 @@ FunctionTypePointer FunctionType::asBoundFunction() const
 		m_kind,
 		m_arbitraryParameters,
 		m_stateMutability,
+		m_executionBehavior,
 		m_declaration,
 		m_gasSet,
 		m_valueSet,
@@ -3577,6 +3590,7 @@ FunctionTypePointer FunctionType::asExternallyCallableFunction(bool _inLibrary) 
 		kind,
 		m_arbitraryParameters,
 		m_stateMutability,
+		m_executionBehavior,
 		m_declaration,
 		m_gasSet,
 		m_valueSet,

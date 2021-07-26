@@ -47,6 +47,7 @@ Json::Value ABI::generate(ContractDefinition const& _contractDef)
 		method["type"] = "function";
 		method["name"] = it.second->declaration().name();
 		method["stateMutability"] = stateMutabilityToString(externalFunctionType->stateMutability());
+        method["executionBehavior"] = executionBehaviorToString(externalFunctionType->executionBehavior());
 		method["inputs"] = formatTypeList(
 			externalFunctionType->parameterNames(),
 			externalFunctionType->parameterTypes(),
@@ -76,6 +77,7 @@ Json::Value ABI::generate(ContractDefinition const& _contractDef)
 		method["type"] = "offchain";
 		method["name"] = it.second->declaration().name();
 		method["stateMutability"] = stateMutabilityToString(StateMutability::View);
+        method["executionBehavior"] = executionBehaviorToString(externalFunctionType->executionBehavior());
 		method["inputs"] = formatTypeList(
 			externalFunctionType->parameterNames(),
 			externalFunctionType->parameterTypes(),

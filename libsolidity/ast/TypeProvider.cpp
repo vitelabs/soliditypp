@@ -467,6 +467,7 @@ FunctionType const* TypeProvider::function(
 	FunctionType::Kind _kind,
 	bool _arbitraryParameters,
 	StateMutability _stateMutability,
+	ExecutionBehavior _executionBehavior,  // Solidity++
 	Declaration const* _declaration,
 	bool _gasSet,
 	bool _valueSet,
@@ -482,6 +483,7 @@ FunctionType const* TypeProvider::function(
 		_kind,
 		_arbitraryParameters,
 		_stateMutability,
+		_executionBehavior,
 		_declaration,
 		_gasSet,
 		_valueSet,

@@ -818,6 +818,7 @@ public:
 		ASTPointer<ASTString> const& _name,
 		Visibility _visibility,
 		StateMutability _stateMutability,
+        ExecutionBehavior _executionBehavior,  // Solidity++
 		bool _free,
 		Token _kind,
 		bool _isVirtual,
@@ -832,26 +833,31 @@ public:
 		StructurallyDocumented(_documentation),
 		ImplementationOptional(_body != nullptr),
 		m_stateMutability(_stateMutability),
+        m_executionBehavior(_executionBehavior),  // Solidity++
 		m_free(_free),
 		m_kind(_kind),
 		m_functionModifiers(std::move(_modifiers)),
 		m_body(_body)
 	{
 		solAssert(_kind == Token::Constructor || _kind == Token::Function || _kind == Token::Fallback || _kind == Token::Receive || _kind == Token::OnMessage || _kind == Token::Getter, "");
-		solAssert(isOrdinary() || isOnMessage() || isOffchain() == !name().empty(), "");
+		solAssert((isOrdinary() || isOnMessage() || isOffchain()) == !name().empty(), "");
 	}
 
 	void accept(ASTVisitor& _visitor) override;
 	void accept(ASTConstVisitor& _visitor) const override;
 
 	StateMutability stateMutability() const { return m_stateMutability; }
+
+    ExecutionBehavior executionBehavior() const { return m_executionBehavior;}  // Solidity++
+
 	bool libraryFunction() const;
 	bool isOrdinary() const { return m_kind == Token::Function; }
 	bool isConstructor() const { return m_kind == Token::Constructor; }
 	bool isFallback() const { return m_kind == Token::Fallback; }
 	bool isReceive() const { return m_kind == Token::Receive; }
 	bool isOnMessage() const { return m_kind == Token::OnMessage; }  // Solidity++
-	bool isOffchain() const { return m_kind == Token::Getter || visibility() == Visibility::Offchain; }  // Solidity++
+	bool isOffchain() const { return !isConstructor() && (m_kind == Token::Getter || visibility() == Visibility::Offchain); }  // Solidity++
+	bool isAsync() const { return m_executionBehavior == ExecutionBehavior::Async; }  // Solidity++
 	bool isFree() const { return m_free; }
 	Token kind() const { return m_kind; }
 	bool isPayable() const { return m_stateMutability == StateMutability::Payable; }
@@ -901,6 +907,7 @@ public:
 
 private:
 	StateMutability m_stateMutability;
+	ExecutionBehavior m_executionBehavior;  // Solidity++
 	bool m_free;
 	Token const m_kind;
 	std::vector<ASTPointer<ModifierInvocation>> m_functionModifiers;

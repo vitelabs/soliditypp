@@ -762,6 +762,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 					FunctionType::Kind::BareCall,
 					false,
 					StateMutability::NonPayable,
+                    ExecutionBehavior::Async,
 					nullptr,
 					true,
 					true

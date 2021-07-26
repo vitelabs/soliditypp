@@ -157,6 +157,7 @@ public:
 		FunctionType::Kind _kind = FunctionType::Kind::Internal,
 		bool _arbitraryParameters = false,
 		StateMutability _stateMutability = StateMutability::NonPayable,
+		ExecutionBehavior _executionBehavior = ExecutionBehavior::Sync,  // Solidity++
 		Declaration const* _declaration = nullptr,
 		bool _gasSet = false,
 		bool _valueSet = false,

@@ -348,6 +348,7 @@ bool ASTJsonConverter::visit(FunctionDefinition const& _node)
 		make_pair("documentation", _node.documentation() ? toJson(*_node.documentation()) : Json::nullValue),
 		make_pair("kind", _node.isFree() ? "freeFunction" : TokenTraits::toString(_node.kind())),
 		make_pair("stateMutability", stateMutabilityToString(_node.stateMutability())),
+        make_pair("executionBehavior", executionBehaviorToString(_node.executionBehavior())),
 		make_pair("virtual", _node.markedVirtual()),
 		make_pair("overrides", _node.overrides() ? toJson(*_node.overrides()) : Json::nullValue),
 		make_pair("parameters", toJson(_node.parameterList())),
