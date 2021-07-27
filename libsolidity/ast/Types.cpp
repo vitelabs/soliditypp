@@ -456,8 +456,8 @@ MemberList::MemberMap AddressType::nativeMembers(ASTNode const*) const
 		// Solidity++: redefine address.send()
 		members.emplace_back(MemberList::Member{"send", TypeProvider::function(strings{"uint"}, strings{"bool"}, FunctionType::Kind::Send, false, StateMutability::NonPayable)});
 		// members.emplace_back(MemberList::Member{"send", TypeProvider::function(strings{"message"}, strings{}, FunctionType::Kind::Send, false, StateMutability::Payable)});
-
-		members.emplace_back(MemberList::Member{"transfer", TypeProvider::function(strings{"uint"}, strings(), FunctionType::Kind::Transfer, false, StateMutability::NonPayable)});
+        // Solidity++: redefine address.transfer()
+		members.emplace_back(MemberList::Member{"transfer", TypeProvider::function(strings{"tokenId", "uint"}, strings(), FunctionType::Kind::Transfer, false, StateMutability::NonPayable)});
 	}
 	return members;
 }

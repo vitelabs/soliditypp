@@ -1,0 +1,8 @@
+pragma soliditypp >=0.4.0;
+contract Test {
+	constructor() payable {}
+
+    onMessage test(address addr) {
+		addr.transfer("tti_564954455820434f494e69b5", 12);
+	}
+}

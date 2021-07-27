@@ -745,8 +745,16 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			_functionCall.expression().accept(*this);
 			// Provide the gas stipend manually at first because we may send zero ether.
 			// Will be zeroed if we send more than zero ether.
-			m_context << u256(evmasm::GasCosts::callStipend);
-			acceptAndConvert(*arguments.front(), *function.parameterTypes().front(), true);
+//			m_context << u256(evmasm::GasCosts::callStipend);
+//			acceptAndConvert(*arguments.front(), *function.parameterTypes().front(), true);
+
+            for (size_t i = 0; i < arguments.size(); ++i) {
+                arguments[i]->accept(*this);
+                utils().convertType(
+                        *arguments[i]->annotation().type,
+                        *function.parameterTypes()[i], true
+                );
+            }
 
 			// Solidity++: no gas
 			// gas <- gas * !value
@@ -770,13 +778,14 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				{},
 				false
 			);
-			if (function.kind() == FunctionType::Kind::Transfer)
-			{
-				// Check if zero (out of stack or not enough balance).
-				m_context << Instruction::ISZERO;
-				// Revert message bubbles up.
-				m_context.appendConditionalRevert(true);
-			}
+
+//			if (function.kind() == FunctionType::Kind::Transfer)
+//			{
+//				// Check if zero (out of stack or not enough balance).
+//				m_context << Instruction::ISZERO;
+//				// Revert message bubbles up.
+//				m_context.appendConditionalRevert(true);
+//			}
 			break;
 		case FunctionType::Kind::Selfdestruct:
 			acceptAndConvert(*arguments.front(), *function.parameterTypes().front(), true);
