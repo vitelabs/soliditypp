@@ -864,7 +864,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 							{referenceType}
 						);
 						utils().toSizeAfterFreeMemoryPointer();
-						m_context << Instruction::KECCAK256;
+						m_context << Instruction::BLAKE2B;
 					}
 					else
 					{
@@ -2691,8 +2691,6 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 
 	evmasm::AssemblyItem endTag = m_context.newTag();
-
-	m_context << Instruction::STOP;
 
 	// if (!returnSuccessConditionAndReturndata && !_tryCall)
 	// {
