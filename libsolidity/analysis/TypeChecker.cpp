@@ -343,6 +343,26 @@ bool TypeChecker::visit(FunctionDefinition const& _function)
 			m_errorReporter.typeError(5587_error, _function.location(), "\"internal\" and \"private\" functions cannot be payable.");
 	}
 
+	// Solidity++: check async functions
+	if (_function.isAsync())
+    {
+	    if(!_function.returnParameters().empty())
+            m_errorReporter.typeError(100311_error, _function.location(), "Async functions cannot have return variables.");
+
+        if (_function.libraryFunction())
+            m_errorReporter.typeError(100301_error, _function.location(), "Library functions cannot be async.");
+        else if (_function.isFree())
+            m_errorReporter.typeError(100302_error, _function.location(), "Free functions cannot be async.");
+        else if (_function.isOrdinary() && !_function.isPartOfExternalInterface())
+            m_errorReporter.typeError(100303_error, _function.location(), "\"internal\" and \"private\" functions cannot be async.");
+    }
+	// Solidity++: check externally visible functions (must be async)
+	else if (_function.isPartOfExternalInterface())
+    {
+	    if (_function.isOrdinary())
+            m_errorReporter.typeError(100304_error, _function.location(), "\"external\" and \"public\" functions must be async.");
+    }
+
 	vector<VariableDeclaration const*> internalParametersInConstructor;
 
 	auto checkArgumentAndReturnParameter = [&](VariableDeclaration const& _var) {

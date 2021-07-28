@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma soliditypp >=0.4.2;
+
+library Utils {
+    function f() public async {
+    }
+}
+// ----
+TypeError 100301: (84-117): Library functions cannot be async.

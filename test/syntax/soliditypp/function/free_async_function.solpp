@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma soliditypp >=0.4.2;
+
+function f() async {
+}
+// ----
+TypeError 100302: (64-86): Free functions cannot be async.
