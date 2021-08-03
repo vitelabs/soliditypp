@@ -1,0 +1,11 @@
+pragma soliditypp >=0.4.2;
+
+contract Test {
+   message test(uint a);
+
+   onMessage invoke()  {
+      send{value: 10}("vite_5cc2939e7a190a712f69333ca40d103b706d9e01a796d9314e", test(1));
+   }
+}
+// ----
+// TypeError 100201: (105-116): Cannot set option "value" in Solidity++. Valid options are "token" and "amount".

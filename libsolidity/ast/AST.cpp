@@ -178,9 +178,10 @@ vector<pair<util::FixedHash<4>, FunctionTypePointer>> const& ContractDefinition:
 			for (FunctionDefinition const* f: contract->definedFunctions())
 				if (f->isPartOfExternalInterface())
 					functions.push_back(TypeProvider::function(*f, FunctionType::Kind::External));
-			for (VariableDeclaration const* v: contract->stateVariables())
-				if (v->isPartOfExternalInterface())
-					functions.push_back(TypeProvider::function(*v));
+            // Solidity++: disable automatic getter generating for public state variables
+//			for (VariableDeclaration const* v: contract->stateVariables())
+//				if (v->isPartOfExternalInterface())
+//					functions.push_back(TypeProvider::function(*v));
 			for (FunctionTypePointer const& fun: functions)
 			{
 				if (!fun->interfaceFunctionType())
@@ -216,9 +217,10 @@ vector<pair<util::FixedHash<4>, FunctionTypePointer>> const& ContractDefinition:
 			for (FunctionDefinition const* f: contract->definedFunctions())
 				if (f->isOffchain())
 					functions.push_back(TypeProvider::function(*f, FunctionType::Kind::External)); // TODO: offchain kind?
-			// for (VariableDeclaration const* v: contract->stateVariables())
-			// 	if (v->isPartOfExternalInterface())
-			// 		functions.push_back(TypeProvider::function(*v));
+					// Solidity++: generate offchain getter automatically for public state variables
+            for (VariableDeclaration const* v: contract->stateVariables())
+                if (v->isPartOfExternalInterface())
+                    functions.push_back(TypeProvider::function(*v));
 			for (FunctionTypePointer const& fun: functions)
 			{
 				if (!fun->interfaceFunctionType())
@@ -562,6 +564,12 @@ bool Declaration::isEventParameter() const
 	return dynamic_cast<EventDefinition const*>(scope());
 }
 
+bool Declaration::isMessageParameter() const
+{
+    solAssert(scope(), "");
+    return dynamic_cast<MessageDefinition const*>(scope());
+}
+
 DeclarationAnnotation& Declaration::annotation() const
 {
 	return initAnnotation<DeclarationAnnotation>();
@@ -705,7 +713,7 @@ set<VariableDeclaration::Location> VariableDeclaration::allowedDataLocations() c
 {
 	using Location = VariableDeclaration::Location;
 
-	if (!hasReferenceOrMappingType() || isStateVariable() || isEventParameter())
+	if (!hasReferenceOrMappingType() || isStateVariable() || isEventParameter() || isMessageParameter())
 		return set<Location>{ Location::Unspecified };
 	else if (isCallableOrCatchParameter())
 	{

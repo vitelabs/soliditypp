@@ -940,7 +940,7 @@ public:
 		solAssert(!isSuper(), "");
 		return encodingType()->calldataEncodedSize(_padded);
 	}
-	unsigned storageBytes() const override { solAssert(!isSuper(), ""); return 20; }
+	unsigned storageBytes() const override { solAssert(!isSuper(), ""); return 21; }  // Solidity++: 168-bit address
 	bool leftAligned() const override { solAssert(!isSuper(), ""); return false; }
 	bool isValueType() const override { return !isSuper(); }
 	bool nameable() const override { return !isSuper(); }
@@ -1182,6 +1182,7 @@ public:
 		SendMessage,
 		BLAKE2B,
 		PrevHash,
+        Height,
 		AccountHeight,
 		FromHash,
 		Random64,
@@ -1230,6 +1231,7 @@ public:
 		Kind _kind = Kind::Internal,
 		bool _arbitraryParameters = false,
 		StateMutability _stateMutability = StateMutability::NonPayable,
+        ExecutionBehavior _executionBehavior = ExecutionBehavior::Sync,  // Solidity++
 		Declaration const* _declaration = nullptr,
 		bool _gasSet = false,
 		bool _valueSet = false,
@@ -1242,6 +1244,7 @@ public:
 		m_returnParameterNames(std::move(_returnParameterNames)),
 		m_kind(_kind),
 		m_stateMutability(_stateMutability),
+		m_executionBehavior(_executionBehavior),  // Solidity++
 		m_arbitraryParameters(_arbitraryParameters),
 		m_gasSet(_gasSet),
 		m_valueSet(_valueSet),
@@ -1327,6 +1330,7 @@ public:
 	bool isBareCall() const;
 	Kind const& kind() const { return m_kind; }
 	StateMutability stateMutability() const { return m_stateMutability; }
+	ExecutionBehavior executionBehavior() const { return m_executionBehavior; }  // Solidity++
 	/// @returns the external signature of this function type given the function name
 	std::string externalSignature() const;
 	/// @returns the external identifier of this function (the hash of the signature).
@@ -1344,6 +1348,11 @@ public:
 	/// Currently, this will only return true for internal functions like keccak and ecrecover.
 	bool isPure() const;
 	bool isPayable() const { return m_stateMutability == StateMutability::Payable; }
+
+    /// @returns true if this function is asynchronous.
+    /// Solidity++ only.
+	bool isAsync() const { return m_executionBehavior == ExecutionBehavior::Async; }
+
 	/// @return A shared pointer of StructuredDocumentation.
 	/// Can contain a nullptr in which case indicates absence of documentation.
 	ASTPointer<StructuredDocumentation> documentation() const;
@@ -1402,6 +1411,7 @@ private:
 	std::vector<std::string> m_returnParameterNames;
 	Kind const m_kind;
 	StateMutability m_stateMutability = StateMutability::NonPayable;
+	ExecutionBehavior m_executionBehavior = ExecutionBehavior::Sync;  // Solidity++
 	/// true if the function takes an arbitrary number of arguments of arbitrary types
 	bool const m_arbitraryParameters = false;
 	bool const m_gasSet = false; ///< true iff the gas value to be used is on the stack

@@ -130,6 +130,9 @@ namespace solidity::langutil
 	K(Event, "event", 0)                                               \
 	/* Solidity++: message keyword */								   \
 	K(Message, "message", 0)                                           \
+    /* Solidity++: offchain keyword */                                 \
+    K(Offchain, "offchain", 0)                                         \
+    \
 	K(External, "external", 0)                                         \
 	K(Fallback, "fallback", 0)                                         \
 	K(For, "for", 0)                                                   \
@@ -249,6 +252,7 @@ namespace solidity::langutil
 	/* Solidity++ keywords */                            			   \
 	K(OnMessage, "onMessage", 0)                                       \
 	K(Getter, "getter", 0)                                       	   \
+    K(Async, "async", 0)                                \
 	\
 	/* Yul-specific tokens, but not keywords. */                       \
 	T(Leave, "leave", 0)                                               \
@@ -289,13 +293,16 @@ namespace TokenTraits
 	constexpr bool isCountOp(Token op) { return op == Token::Inc || op == Token::Dec; }
 	constexpr bool isShiftOp(Token op) { return (Token::SHL <= op) && (op <= Token::SHR); }
 	constexpr bool isVariableVisibilitySpecifier(Token op) { return op == Token::Public || op == Token::Private || op == Token::Internal; }
-	constexpr bool isVisibilitySpecifier(Token op) { return isVariableVisibilitySpecifier(op) || op == Token::External; }
+	constexpr bool isVisibilitySpecifier(Token op) { return isVariableVisibilitySpecifier(op) || op == Token::External || op == Token::Offchain; }  // Solidity++: add offchain visibility
 	constexpr bool isLocationSpecifier(Token op) { return op == Token::Memory || op == Token::Storage || op == Token::CallData; }
 
 	constexpr bool isStateMutabilitySpecifier(Token op)
 	{
 		return op == Token::Pure || op == Token::View || op == Token::Payable;
 	}
+
+	// Solidity++: execution behavior specifier: sync / async
+    constexpr bool isExecutionBehaviorSpecifier(Token op) { return op == Token::Async; }
 
 	constexpr bool isEtherSubdenomination(Token op) { return op >= Token::SubWei && op <= Token::SubEther; }
 	

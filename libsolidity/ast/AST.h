@@ -239,10 +239,10 @@ public:
 	ASTString const& name() const { return *m_name; }
 	bool noVisibilitySpecified() const { return m_visibility == Visibility::Default; }
 	Visibility visibility() const { return m_visibility == Visibility::Default ? defaultVisibility() : m_visibility; }
-	bool isPublic() const { return visibility() >= Visibility::Public; }
-	virtual bool isVisibleInContract() const { return visibility() != Visibility::External; }
+	bool isPublic() const { return visibility() >= Visibility::Public && visibility() < Visibility::Offchain; }  // Solidity++
+	virtual bool isVisibleInContract() const { return visibility() != Visibility::External && visibility() != Visibility::Offchain; }  // Solidity++
 	virtual bool isVisibleInDerivedContracts() const { return isVisibleInContract() && visibility() >= Visibility::Internal; }
-	bool isVisibleAsLibraryMember() const { return visibility() >= Visibility::Internal; }
+	bool isVisibleAsLibraryMember() const { return visibility() >= Visibility::Internal && visibility() < Visibility::Offchain; }  // Solidity++
 	virtual bool isVisibleViaContractTypeAccess() const { return false; }
 
 	virtual bool isLValue() const { return false; }
@@ -254,6 +254,10 @@ public:
 	bool isStructMember() const;
 	/// @returns true if this is a declaration of a parameter of an event.
 	bool isEventParameter() const;
+
+	/// Solidity++:
+    /// @returns true if this is a declaration of a parameter of a message.
+    bool isMessageParameter() const;
 
 	/// @returns the type of expressions referencing this declaration.
 	/// This can only be called once types of variable declarations have already been resolved.
@@ -814,6 +818,7 @@ public:
 		ASTPointer<ASTString> const& _name,
 		Visibility _visibility,
 		StateMutability _stateMutability,
+        ExecutionBehavior _executionBehavior,  // Solidity++
 		bool _free,
 		Token _kind,
 		bool _isVirtual,
@@ -828,26 +833,31 @@ public:
 		StructurallyDocumented(_documentation),
 		ImplementationOptional(_body != nullptr),
 		m_stateMutability(_stateMutability),
+        m_executionBehavior(_executionBehavior),  // Solidity++
 		m_free(_free),
 		m_kind(_kind),
 		m_functionModifiers(std::move(_modifiers)),
 		m_body(_body)
 	{
 		solAssert(_kind == Token::Constructor || _kind == Token::Function || _kind == Token::Fallback || _kind == Token::Receive || _kind == Token::OnMessage || _kind == Token::Getter, "");
-		solAssert(isOrdinary() || isOnMessage() || isOffchain() == !name().empty(), "");
+		solAssert((isOrdinary() || isOnMessage() || isOffchain()) == !name().empty(), "");
 	}
 
 	void accept(ASTVisitor& _visitor) override;
 	void accept(ASTConstVisitor& _visitor) const override;
 
 	StateMutability stateMutability() const { return m_stateMutability; }
+
+    ExecutionBehavior executionBehavior() const { return m_executionBehavior;}  // Solidity++
+
 	bool libraryFunction() const;
 	bool isOrdinary() const { return m_kind == Token::Function; }
 	bool isConstructor() const { return m_kind == Token::Constructor; }
 	bool isFallback() const { return m_kind == Token::Fallback; }
 	bool isReceive() const { return m_kind == Token::Receive; }
-	bool isOnMessage() const { return m_kind == Token::OnMessage; }
-	bool isOffchain() const { return m_kind == Token::Getter; }
+	bool isOnMessage() const { return m_kind == Token::OnMessage; }  // Solidity++
+	bool isOffchain() const { return !isConstructor() && (m_kind == Token::Getter || visibility() == Visibility::Offchain); }  // Solidity++
+	bool isAsync() const { return m_executionBehavior == ExecutionBehavior::Async; }  // Solidity++
 	bool isFree() const { return m_free; }
 	Token kind() const { return m_kind; }
 	bool isPayable() const { return m_stateMutability == StateMutability::Payable; }
@@ -897,6 +907,7 @@ public:
 
 private:
 	StateMutability m_stateMutability;
+	ExecutionBehavior m_executionBehavior;  // Solidity++
 	bool m_free;
 	Token const m_kind;
 	std::vector<ASTPointer<ModifierInvocation>> m_functionModifiers;
@@ -1743,19 +1754,19 @@ public:
 			int64_t _id,
             SourceLocation const& _location,
             ASTPointer<ASTString> const& _docString,
-            ASTPointer<Expression> const& _toAddress,
-            ASTPointer<FunctionCall> _functionCall
+            ASTPointer<Expression> const& _address,
+            ASTPointer<Expression> _expression
     ):
-        Statement(_id, _location, _docString), m_toAddress(_toAddress), m_messageCall(std::move(_functionCall)) {}
+        Statement(_id, _location, _docString), m_address(_address), m_expression(std::move(_expression)) {}
     void accept(ASTVisitor& _visitor) override;
     void accept(ASTConstVisitor& _visitor) const override;
 
-    Expression const& toAddress() const { return *m_toAddress; }
-    FunctionCall const& messageCall() const { return *m_messageCall; }
+    Expression const& address() const { return *m_address; }
+    Expression const& expression() const { return *m_expression; }
 
 private:
-    ASTPointer<Expression> m_toAddress;
-    ASTPointer<FunctionCall> m_messageCall;
+    ASTPointer<Expression> m_address;
+    ASTPointer<Expression> m_expression;
 };
 
 

@@ -117,6 +117,7 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 				// copy key[i] to top.
 				utils().copyToStackTop(static_cast<unsigned>(paramTypes.size() - i + 1), 1);
 
+                // Solidity++: keccak256 -> blake2b
 				m_context.appendInlineAssembly(R"({
 					let key_len := mload(key_ptr)
 					// Temp. use the memory after the array data for the slot
@@ -124,7 +125,7 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 					let post_data_ptr := add(key_ptr, add(key_len, 0x20))
 					let orig_data := mload(post_data_ptr)
 					mstore(post_data_ptr, slot_pos)
-					let hash := keccak256(add(key_ptr, 0x20), add(key_len, 0x20))
+					let hash := blake2b(add(key_ptr, 0x20), add(key_len, 0x20))
 					mstore(post_data_ptr, orig_data)
 					slot_pos := hash
 				})", {"slot_pos", "key_ptr"});
@@ -142,7 +143,7 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 				utils().copyToStackTop(static_cast<unsigned>(paramTypes.size() - i), 1);
 				utils().storeInMemory(0);
 				m_context << u256(64) << u256(0);
-				m_context << Instruction::KECCAK256;
+				m_context << Instruction::BLAKE2B;  // Solidity++: keccak256 -> blake2b
 			}
 
 			// push offset
@@ -745,8 +746,16 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			_functionCall.expression().accept(*this);
 			// Provide the gas stipend manually at first because we may send zero ether.
 			// Will be zeroed if we send more than zero ether.
-			m_context << u256(evmasm::GasCosts::callStipend);
-			acceptAndConvert(*arguments.front(), *function.parameterTypes().front(), true);
+//			m_context << u256(evmasm::GasCosts::callStipend);
+//			acceptAndConvert(*arguments.front(), *function.parameterTypes().front(), true);
+
+            for (size_t i = 0; i < arguments.size(); ++i) {
+                arguments[i]->accept(*this);
+                utils().convertType(
+                        *arguments[i]->annotation().type,
+                        *function.parameterTypes()[i], true
+                );
+            }
 
 			// Solidity++: no gas
 			// gas <- gas * !value
@@ -762,6 +771,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 					FunctionType::Kind::BareCall,
 					false,
 					StateMutability::NonPayable,
+                    ExecutionBehavior::Async,
 					nullptr,
 					true,
 					true
@@ -769,13 +779,14 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				{},
 				false
 			);
-			if (function.kind() == FunctionType::Kind::Transfer)
-			{
-				// Check if zero (out of stack or not enough balance).
-				m_context << Instruction::ISZERO;
-				// Revert message bubbles up.
-				m_context.appendConditionalRevert(true);
-			}
+
+//			if (function.kind() == FunctionType::Kind::Transfer)
+//			{
+//				// Check if zero (out of stack or not enough balance).
+//				m_context << Instruction::ISZERO;
+//				// Revert message bubbles up.
+//				m_context.appendConditionalRevert(true);
+//			}
 			break;
 		case FunctionType::Kind::Selfdestruct:
 			acceptAndConvert(*arguments.front(), *function.parameterTypes().front(), true);
@@ -854,7 +865,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 							{referenceType}
 						);
 						utils().toSizeAfterFreeMemoryPointer();
-						m_context << Instruction::KECCAK256;
+						m_context << Instruction::BLAKE2B;  // Solidity++: keccak256 -> blake2b
 					}
 					else
 					{
@@ -1188,7 +1199,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 						// stack: <memory pointer> <selector> <free mem ptr>
 						utils().packedEncode(TypePointers{selectorType}, TypePointers());
 						utils().toSizeAfterFreeMemoryPointer();
-						m_context << Instruction::KECCAK256;
+						m_context << Instruction::BLAKE2B;  // Solidity++: keccak256 -> blake2b
 						// stack: <memory pointer> <hash>
 
 						dataOnStack = TypeProvider::fixedBytes(32);
@@ -1292,6 +1303,11 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
             m_context << Instruction::PREVHASH;
             break;
 		}
+        case FunctionType::Kind::Height:
+        {
+            m_context << Instruction::NUMBER;
+            break;
+        }
 		case FunctionType::Kind::AccountHeight:
 		{
 			m_context << Instruction::ACCOUNTHEIGHT;
@@ -1323,7 +1339,8 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 	_functionCallOptions.expression().accept(*this);
 
 	// Desired Stack: [salt], [gas], [value]
-	enum Option { Salt, Gas, Value };
+	// Solidity++: desired stack: [tokenId], [amount]
+	enum Option { Salt, Gas, Value, TokenId, Amount };
 
 	vector<Option> presentOptions;
 	FunctionType const& funType = dynamic_cast<FunctionType const&>(
@@ -1331,7 +1348,13 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 	);
 	if (funType.saltSet()) presentOptions.emplace_back(Salt);
 	if (funType.gasSet()) presentOptions.emplace_back(Gas);
-	if (funType.valueSet()) presentOptions.emplace_back(Value);
+
+	// Solidity++:
+	if (funType.valueSet())
+	{
+	    presentOptions.emplace_back(TokenId);
+        presentOptions.emplace_back(Amount);
+	}
 
 	for (size_t i = 0; i < _functionCallOptions.options().size(); ++i)
 	{
@@ -1347,6 +1370,17 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 			newOption = Gas;
 		else if (name == "value")
 			newOption = Value;
+		// Solidity++:
+		else if (name == "token")
+        {
+		    newOption = TokenId;
+		    requiredType = TypeProvider::viteTokenId();
+        }
+		else if (name == "amount")
+        {
+		    newOption = Amount;
+        }
+
 		else
 			solAssert(false, "Unexpected option name!");
 		acceptAndConvert(*_functionCallOptions.options()[i], *requiredType);
@@ -1952,7 +1986,7 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 				utils().storeInMemoryDynamic(*TypeProvider::uint256());
 				m_context << u256(0);
 			}
-			m_context << Instruction::KECCAK256;
+			m_context << Instruction::BLAKE2B;  // Solidity++: keccak256 -> blake2b
 			m_context << u256(0);
 			setLValueToStorageItem(_indexAccess);
 			break;
@@ -2436,8 +2470,8 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 	// To:
 	// <stack top>
-	// value [if _functionType.valueSet()]
-	// tokenId [if _functionType.valueSet()]
+	// amount [if _functionType.valueSet()]
+	// token  [if _functionType.valueSet()]
 	// self object [if bound - moved to top right away]
 	// function identifier [unless bare]
 	// contract address
@@ -2558,8 +2592,8 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// Stack now:
 	// <stack top>
 	// input_memory_end
-	// value [if _functionType.valueSet()]
-	// tokenId [if _functionType.valueSet()]
+	// amount [if _functionType.valueSet()]
+	// token  [if _functionType.valueSet()]
 	// function identifier [unless bare]
 	// contract address
 
@@ -2610,14 +2644,17 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	
 	m_context << dupInstruction(m_context.baseToCurrentStackOffset(contractStackPos));
 
-	bool existenceChecked = false;
-	// Check the target contract exists (has code) for non-low-level calls.
-	if (funKind == FunctionType::Kind::External || funKind == FunctionType::Kind::DelegateCall)
-	{
-		m_context << Instruction::DUP1 << Instruction::EXTCODESIZE << Instruction::ISZERO;
-		m_context.appendConditionalRevert(false, "Target contract does not contain code");
-		existenceChecked = true;
-	}
+
+	// Solidity++: disable contract existence
+
+    //	bool existenceChecked = false;
+    //	// Check the target contract exists (has code) for non-low-level calls.
+    //	if (funKind == FunctionType::Kind::External || funKind == FunctionType::Kind::DelegateCall)
+    //	{
+    //		m_context << Instruction::DUP1 << Instruction::EXTCODESIZE << Instruction::ISZERO;
+    //		m_context.appendConditionalRevert(false, "Target contract does not contain code");
+    //		existenceChecked = true;
+    //	}
 
 	// Solidity++: remove gas
 
@@ -2655,8 +2692,6 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 
 	evmasm::AssemblyItem endTag = m_context.newTag();
-
-	m_context << Instruction::STOP;
 
 	// if (!returnSuccessConditionAndReturndata && !_tryCall)
 	// {

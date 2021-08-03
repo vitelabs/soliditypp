@@ -99,6 +99,7 @@ inline vector<shared_ptr<MagicVariableDeclaration const>> constructMagicVariable
 		// Solidity++: solidity++ magic variables
 		magicVarDecl("blake2b", TypeProvider::function(strings{"bytes memory"}, strings{"bytes32"}, FunctionType::Kind::BLAKE2B, false, StateMutability::Pure)),
 		magicVarDecl("balance", TypeProvider::function(strings{"tokenId"}, strings{"uint"}, FunctionType::Kind::Balance, false, StateMutability::View)),
+        magicVarDecl("height", TypeProvider::function(strings(), strings{"uint256"}, FunctionType::Kind::Height, false, StateMutability::View)),
 		magicVarDecl("accountheight", TypeProvider::function(strings(), strings{"uint64"}, FunctionType::Kind::AccountHeight, false, StateMutability::View)),
 		magicVarDecl("prevhash", TypeProvider::function(strings(), strings{"bytes32"}, FunctionType::Kind::PrevHash, false, StateMutability::View)),
 		magicVarDecl("fromhash", TypeProvider::function(strings(), strings{"bytes32"}, FunctionType::Kind::FromHash, false, StateMutability::NonPayable)),

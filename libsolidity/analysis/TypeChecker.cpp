@@ -343,6 +343,26 @@ bool TypeChecker::visit(FunctionDefinition const& _function)
 			m_errorReporter.typeError(5587_error, _function.location(), "\"internal\" and \"private\" functions cannot be payable.");
 	}
 
+	// Solidity++: check async functions
+	if (_function.isAsync())
+    {
+	    if(!_function.returnParameters().empty())
+            m_errorReporter.typeError(100311_error, _function.location(), "Async functions cannot have return variables.");
+
+        if (_function.libraryFunction())
+            m_errorReporter.typeError(100301_error, _function.location(), "Library functions cannot be async.");
+        else if (_function.isFree())
+            m_errorReporter.typeError(100302_error, _function.location(), "Free functions cannot be async.");
+        else if (_function.isOrdinary() && !_function.isPartOfExternalInterface())
+            m_errorReporter.typeError(100303_error, _function.location(), "\"internal\" and \"private\" functions cannot be async.");
+    }
+	// Solidity++: check externally visible functions (must be async)
+	else if (_function.isPartOfExternalInterface())
+    {
+	    if (_function.isOrdinary())
+            m_errorReporter.typeError(100304_error, _function.location(), "\"external\" and \"public\" functions must be async.");
+    }
+
 	vector<VariableDeclaration const*> internalParametersInConstructor;
 
 	auto checkArgumentAndReturnParameter = [&](VariableDeclaration const& _var) {
@@ -2498,6 +2518,8 @@ bool TypeChecker::visit(FunctionCallOptions const& _functionCallOptions)
 	bool setSalt = false;
 	bool setValue = false;
 	bool setGas = false;
+	bool setTokenId = false;
+	bool setAmount = false;
 
 	FunctionType::Kind kind = expressionFunctionType->kind();
 	if (
@@ -2506,7 +2528,8 @@ bool TypeChecker::visit(FunctionCallOptions const& _functionCallOptions)
 		kind != FunctionType::Kind::BareCall &&
 		kind != FunctionType::Kind::BareCallCode &&
 		kind != FunctionType::Kind::BareDelegateCall &&
-		kind != FunctionType::Kind::BareStaticCall
+		kind != FunctionType::Kind::BareStaticCall &&
+		kind != FunctionType::Kind::SendMessage  // Solidity++
 	)
 	{
 		m_errorReporter.fatalTypeError(
@@ -2544,71 +2567,83 @@ bool TypeChecker::visit(FunctionCallOptions const& _functionCallOptions)
 	for (size_t i = 0; i < _functionCallOptions.names().size(); ++i)
 	{
 		string const& name = *(_functionCallOptions.names()[i]);
-		if (name == "salt")
-		{
-			if (kind == FunctionType::Kind::Creation)
-			{
-				setCheckOption(setSalt, "salt");
-				expectType(*_functionCallOptions.options()[i], *TypeProvider::fixedBytes(32));
-			}
-			else
-				m_errorReporter.typeError(
-					2721_error,
-					_functionCallOptions.location(),
-					"Function call option \"salt\" can only be used with \"new\"."
-				);
-		}
-		else if (name == "value")
-		{
-			if (kind == FunctionType::Kind::BareDelegateCall)
-				m_errorReporter.typeError(
-					6189_error,
-					_functionCallOptions.location(),
-					"Cannot set option \"value\" for delegatecall."
-				);
-			else if (kind == FunctionType::Kind::BareStaticCall)
-				m_errorReporter.typeError(
-					2842_error,
-					_functionCallOptions.location(),
-					"Cannot set option \"value\" for staticcall."
-				);
-			else if (!expressionFunctionType->isPayable())
-				m_errorReporter.typeError(
-					7006_error,
-					_functionCallOptions.location(),
-					kind == FunctionType::Kind::Creation ?
-						"Cannot set option \"value\", since the constructor of " +
-						expressionFunctionType->returnParameterTypes().front()->toString() +
-						" is not payable." :
-						"Cannot set option \"value\" on a non-payable function type."
-				);
-			else
-			{
-				expectType(*_functionCallOptions.options()[i], *TypeProvider::uint256());
 
-				setCheckOption(setValue, "value");
-			}
-		}
-		else if (name == "gas")
+        // Solidity++: disable ethereum options of "value", "salt" and "gas"
+		if (name == "value" || name == "gas" || name == "salt")
 		{
-			if (kind == FunctionType::Kind::Creation)
-				m_errorReporter.typeError(
-					9903_error,
-					_functionCallOptions.location(),
-					"Function call option \"gas\" cannot be used with \"new\"."
-				);
-			else
-			{
-				expectType(*_functionCallOptions.options()[i], *TypeProvider::uint256());
-
-				setCheckOption(setGas, "gas");
-			}
+            m_errorReporter.typeError(
+                    100201_error,
+                    _functionCallOptions.location(),
+                    "Cannot set option \"" + name + "\" in Solidity++. Valid options are \"token\" and \"amount\"."
+            );
 		}
+		// Solidity++:
+        else if (name == "token")
+        {
+            if (kind == FunctionType::Kind::BareDelegateCall)
+                m_errorReporter.typeError(
+                        6189_error,
+                        _functionCallOptions.location(),
+                        "Cannot set option \"tokenId\" for delegatecall."
+                );
+            else if (kind == FunctionType::Kind::BareStaticCall)
+                m_errorReporter.typeError(
+                        2842_error,
+                        _functionCallOptions.location(),
+                        "Cannot set option \"tokenId\" for staticcall."
+                );
+            else if (!expressionFunctionType->isPayable())
+                m_errorReporter.typeError(
+                        7006_error,
+                        _functionCallOptions.location(),
+                        kind == FunctionType::Kind::Creation ?
+                        "Cannot set option \"tokenId\", since the constructor of " +
+                        expressionFunctionType->returnParameterTypes().front()->toString() +
+                        " is not payable." :
+                        "Cannot set option \"tokenId\" on a non-payable function type."
+                );
+            else
+            {
+                expectType(*_functionCallOptions.options()[i], *TypeProvider::viteTokenId());
+                setCheckOption(setTokenId, "tokenId");
+            }
+        }
+        else if (name == "amount")
+        {
+            if (kind == FunctionType::Kind::BareDelegateCall)
+                m_errorReporter.typeError(
+                        6189_error,
+                        _functionCallOptions.location(),
+                        "Cannot set option \"amount\" for delegatecall."
+                );
+            else if (kind == FunctionType::Kind::BareStaticCall)
+                m_errorReporter.typeError(
+                        2842_error,
+                        _functionCallOptions.location(),
+                        "Cannot set option \"amount\" for staticcall."
+                );
+            else if (!expressionFunctionType->isPayable())
+                m_errorReporter.typeError(
+                        7006_error,
+                        _functionCallOptions.location(),
+                        kind == FunctionType::Kind::Creation ?
+                        "Cannot set option \"amount\", since the constructor of " +
+                        expressionFunctionType->returnParameterTypes().front()->toString() +
+                        " is not payable." :
+                        "Cannot set option \"amount\" on a non-payable function type."
+                );
+            else
+            {
+                expectType(*_functionCallOptions.options()[i], *TypeProvider::uint256());
+                setCheckOption(setAmount, "amount");
+            }
+        }
+
 		else
 			m_errorReporter.typeError(
 				9318_error,
 				_functionCallOptions.location(),
-				"Unknown call option \"" + name + "\". Valid options are \"salt\", \"value\" and \"gas\"."
+				"Unknown call option \"" + name + "\". Valid options are \"token\" and \"amount\"."
 			);
 	}
 
@@ -2618,6 +2653,8 @@ bool TypeChecker::visit(FunctionCallOptions const& _functionCallOptions)
 			_functionCallOptions.location(),
 			"Unsupported call option \"salt\" (requires Constantinople-compatible VMs)."
 		);
+
+	setValue = setTokenId && setAmount; // Solidity++
 
 	_functionCallOptions.annotation().type = expressionFunctionType->copyAndSetCallOptions(setGas, setValue, setSalt);
 	return false;

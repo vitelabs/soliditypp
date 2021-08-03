@@ -1295,9 +1295,9 @@ bool ContractCompiler::visit(SendStatement const& _send)
 {
     CompilerContext::LocationSetter locationSetter(m_context, _send);
     StackHeightChecker checker(m_context);
-    compileExpression(_send.toAddress());
-    CompilerUtils(m_context).convertType(*_send.toAddress().annotation().type, IntegerType(168), true);
-    compileExpression(_send.messageCall());
+    compileExpression(_send.address());
+    CompilerUtils(m_context).convertType(*_send.address().annotation().type, IntegerType(168), true);
+    compileExpression(_send.expression());
     checker.check();
     return false;
 }
