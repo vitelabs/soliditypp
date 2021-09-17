@@ -23,6 +23,7 @@ RUN apk update \
 	bash-doc \
 	bash-completion \
 	ca-certificates \
+	clang \
 	&& rm -rf /var/cache/apk/* \
 	&& /bin/bash
 
