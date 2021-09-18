@@ -23,5 +23,12 @@ inline u256 selectorFromSignature(std::string const& _signature)
 	return u256(selectorFromSignature32(_signature)) << (256 - 32);
 }
 
+/// Solidity++:
+/// @returns the callback selector for a given await Id, as a 32 bit number.
+inline uint32_t selectorFromAwaitId(int64_t awaitId)
+{
+    auto callbackSignature = "$await_callback_" + std::to_string(awaitId);
+    return selectorFromSignature32(callbackSignature);
+}
 
 }

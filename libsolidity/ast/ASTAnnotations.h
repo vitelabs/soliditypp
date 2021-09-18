@@ -253,6 +253,9 @@ struct ExpressionAnnotation: ASTAnnotation
 	/// that is called, used for overload resolution
 	std::optional<FuncCallArguments> arguments;
 
+	/// Solidity++: Id of await expression, used for callback signature of a function call
+    int64_t awaitId = 0;
+
 	/// True if the expression consists solely of the name of the function and the function is called immediately
 	/// instead of being stored or processed. The name may be qualified with the name of a contract, library
 	/// module, etc., that clarifies the scope. For example: `m.L.f()`, where `m` is a module, `L` is a library

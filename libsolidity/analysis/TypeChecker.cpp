@@ -346,9 +346,6 @@ bool TypeChecker::visit(FunctionDefinition const& _function)
 	// Solidity++: check async functions
 	if (_function.isAsync())
     {
-	    if(!_function.returnParameters().empty())
-            m_errorReporter.typeError(100311_error, _function.location(), "Async functions cannot have return variables.");
-
         if (_function.libraryFunction())
             m_errorReporter.typeError(100301_error, _function.location(), "Library functions cannot be async.");
         else if (_function.isFree())
@@ -2731,6 +2728,18 @@ void TypeChecker::endVisit(NewExpression const& _newExpression)
 		_newExpression.annotation().isPure = false;
 		m_errorReporter.fatalTypeError(8807_error, _newExpression.location(), "Contract or array type expected.");
 	}
+}
+
+// Solidity++:
+bool TypeChecker::visit(AwaitExpression const& _awaitExpression)
+{
+    _awaitExpression.expression().accept(*this);
+    _awaitExpression.annotation().type = _awaitExpression.expression().annotation().type;
+    _awaitExpression.annotation().isPure = false;
+    // pass the await id to function call
+    _awaitExpression.expression().annotation().awaitId = _awaitExpression.id();
+
+    return false;
 }
 
 bool TypeChecker::visit(MemberAccess const& _memberAccess)

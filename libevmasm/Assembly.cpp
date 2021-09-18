@@ -16,6 +16,8 @@
 
 #include <liblangutil/Exceptions.h>
 
+#include <libsolidity/codegen/CompilerContext.h>
+
 #include <fstream>
 #include <json/json.h>
 
@@ -24,16 +26,25 @@ using namespace solidity;
 using namespace solidity::evmasm;
 using namespace solidity::langutil;
 using namespace solidity::util;
+using namespace solidity::frontend;
 
 AssemblyItem const& Assembly::append(AssemblyItem const& _i)
 {
-	assertThrow(m_deposit >= 0, AssemblyException, "Stack underflow.");
+	assertThrow(m_deposit >= 0, AssemblyException, "Stack underflow while appending '" + _i.toAssemblyText(*this) + "'. Deposit should be >=0 but get " + to_string(m_deposit));
 	m_deposit += static_cast<int>(_i.deposit());
 	m_items.emplace_back(_i);
 	if (!m_items.back().location().isValid() && m_currentSourceLocation.isValid())
 		m_items.back().setLocation(m_currentSourceLocation);
 	m_items.back().m_modifierDepth = m_currentModifierDepth;
 	return m_items.back();
+}
+
+void Assembly::appendDebugInfo(string const& _debugInfo)
+{
+    auto pos = m_items.size();
+    auto iter = m_debugInfos.find(pos);
+    auto message = iter == m_debugInfos.end() ? _debugInfo : iter->second + "\n  // " + _debugInfo;
+    m_debugInfos[pos] = message;
 }
 
 unsigned Assembly::bytesRequired(unsigned subTagSize) const
@@ -100,7 +111,14 @@ public:
 		))
 		{
 			flush();
-			m_out << m_prefix << (_item.type() == Tag ? "" : "  ") << expression << endl;
+			m_out << m_prefix << (_item.type() == Tag ? "" : "  ") << expression;
+			// Output debug info
+			auto debugInfo = _item.debugInfo();
+			if (!debugInfo.empty())
+			{
+			    m_out << "  // " << debugInfo;
+			}
+			m_out << endl;
 			return;
 		}
 		if (_item.arguments() > 0)
@@ -130,7 +148,8 @@ public:
 
 	void printLocation()
 	{
-		if (!m_location.isValid())
+	    // do not print source in "#utility.yul"
+		if (!m_location.isValid() || m_location.source->name() == CompilerContext::yulUtilityFileName())
 			return;
 		m_out << m_prefix << "    /*";
 		if (m_location.source)
@@ -157,8 +176,19 @@ void Assembly::assemblyStream(ostream& _out, string const& _prefix, StringMap co
 {
 	Functionalizer f(_out, _prefix, _sourceCodes, *this);
 
-	for (auto const& i: m_items)
-		f.feed(i);
+	for (size_t i = 0; i < m_items.size(); ++i)
+	{
+	    // Output debug info
+	    auto debugInfo = m_debugInfos.find(i);
+	    if (debugInfo != m_debugInfos.end())
+	    {
+	        f.flush();
+	        _out << "  // " << debugInfo->second << endl;
+	    }
+	    // Output assembly item
+        auto item = m_items.at(i);
+	    f.feed(item);
+	}
 	f.flush();
 
 	if (!m_data.empty() || !m_subs.empty())
@@ -330,8 +360,8 @@ AssemblyItem Assembly::namedTag(string const& _name)
 {
 	assertThrow(!_name.empty(), AssemblyException, "Empty named tag.");
 	if (!m_namedTags.count(_name))
-		m_namedTags[_name] = static_cast<size_t>(newTag().data());
-	return AssemblyItem{Tag, m_namedTags.at(_name)};
+		m_namedTags[_name] = static_cast<size_t>(newTag(_name).data());
+	return AssemblyItem{Tag, m_namedTags.at(_name), langutil::SourceLocation(), _name};
 }
 
 AssemblyItem Assembly::newPushLibraryAddress(string const& _identifier)
@@ -721,14 +751,17 @@ LinkerObject const& Assembly::assemble() const
 		size_t subId;
 		size_t tagId;
 		tie(subId, tagId) = i.second;
-		assertThrow(subId == numeric_limits<size_t>::max() || subId < m_subs.size(), AssemblyException, "Invalid sub id");
+		assertThrow(subId == numeric_limits<size_t>::max() || subId < m_subs.size(), AssemblyException, "Invalid sub id: " +
+                toString(subId));
 		vector<size_t> const& tagPositions =
 			subId == numeric_limits<size_t>::max() ?
 			m_tagPositionsInBytecode :
 			m_subs[subId]->m_tagPositionsInBytecode;
-		assertThrow(tagId < tagPositions.size(), AssemblyException, "Reference to non-existing tag.");
+		assertThrow(tagId < tagPositions.size(), AssemblyException, "Reference to non-existing tag: "+
+		toString(tagId));
 		size_t pos = tagPositions[tagId];
-		assertThrow(pos != numeric_limits<size_t>::max(), AssemblyException, "Reference to tag without position.");
+		assertThrow(pos != numeric_limits<size_t>::max(), AssemblyException, "Reference to tag without position: "+
+		toString(tagId));
 		assertThrow(util::bytesRequired(pos) <= bytesPerTag, AssemblyException, "Tag too large for reserved space.");
 		bytesRef r(ret.bytecode.data() + i.first, bytesPerTag);
 		toBigEndian(pos, r);

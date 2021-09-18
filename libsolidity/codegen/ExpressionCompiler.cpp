@@ -79,6 +79,8 @@ void ExpressionCompiler::appendConstStateVariableAccessor(VariableDeclaration co
 void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& _varDecl)
 {
 	solAssert(!_varDecl.isConstant(), "");
+	m_context.appendDebugInfo("ExpressionCompiler::appendStateVariableAccessor(" + _varDecl.name() + ")");
+
 	CompilerContext::LocationSetter locationSetter(m_context, _varDecl);
 	FunctionType accessorType(_varDecl);
 
@@ -228,6 +230,7 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 		);
 	m_context << dupInstruction(retSizeOnStack + 1);
 	m_context.appendJump(evmasm::AssemblyItem::JumpType::OutOfFunction);
+    m_context.appendDebugInfo("end of ExpressionCompiler::appendStateVariableAccessor()");
 }
 
 bool ExpressionCompiler::visit(Conditional const& _condition)
@@ -510,6 +513,7 @@ bool ExpressionCompiler::visit(BinaryOperation const& _binaryOperation)
 
 bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 {
+    debug("ExpressionCompiler::visit(functionCall = " + _functionCall.location().text() + ")");
 	auto functionCallKind = *_functionCall.annotation().kind;
 
 	CompilerContext::LocationSetter locationSetter(m_context, _functionCall);
@@ -580,8 +584,8 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 		{
 			// Calling convention: Caller pushes return address and arguments
 			// Callee removes them and pushes return values
-
-			evmasm::AssemblyItem returnLabel = m_context.pushNewTag();
+            auto desc = "return of function " + function.canonicalName();
+			evmasm::AssemblyItem returnLabel = m_context.pushNewTag(desc);
 			for (unsigned i = 0; i < arguments.size(); ++i)
 				acceptAndConvert(*arguments[i], *function.parameterTypes()[i]);
 
@@ -641,7 +645,17 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 		case FunctionType::Kind::DelegateCall:
 		case FunctionType::Kind::SendMessage:  // Solidity++
 			_functionCall.expression().accept(*this);
-			appendExternalFunctionCall(function, arguments, _functionCall.annotation().tryCall);
+			uint32_t callbackSelector;
+			if(_functionCall.annotation().awaitId && function.executionBehavior() == ExecutionBehavior::Async)
+            {
+			    auto awaitId = _functionCall.annotation().awaitId;
+                callbackSelector = selectorFromAwaitId(awaitId);
+                debug("Callback signature is " + toHex(callbackSelector, HexPrefix::Add));
+            }
+			else
+                callbackSelector = 0;
+
+			appendExternalFunctionCall(function, arguments, _functionCall.annotation().tryCall, callbackSelector);
 			break;
 			
 		case FunctionType::Kind::BareCallCode:
@@ -777,7 +791,8 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 					true
 				),
 				{},
-				false
+				false,
+				0
 			);
 
 //			if (function.kind() == FunctionType::Kind::Transfer)
@@ -950,7 +965,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			for (unsigned i = function.sizeOnStack(); i > 0; --i)
 				m_context << swapInstruction(i);
 			solAssert(!_functionCall.annotation().tryCall, "");
-			appendExternalFunctionCall(function, arguments, false);
+			appendExternalFunctionCall(function, arguments, false, 0);
 			break;
 		}
 		case FunctionType::Kind::ByteArrayPush:
@@ -1404,6 +1419,7 @@ bool ExpressionCompiler::visit(NewExpression const&)
 bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 {
 	CompilerContext::LocationSetter locationSetter(m_context, _memberAccess);
+	m_context.appendDebugInfo("ExpressionCompiler::visit(_memberAccess=" + _memberAccess.location().text() + ")");
 	// Check whether the member is a bound function.
 	ASTString const& member = _memberAccess.memberName();
 	if (auto funType = dynamic_cast<FunctionType const*>(_memberAccess.annotation().type))
@@ -1593,6 +1609,7 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 	{
 	case Type::Category::Contract:
 	{
+	    m_context.appendDebugInfo("Contract member access");
 		ContractType const& type = dynamic_cast<ContractType const&>(*_memberAccess.expression().annotation().type);
 		// ordinary contract type
 		if (Declaration const* declaration = _memberAccess.annotation().referencedDeclaration)
@@ -1605,6 +1622,7 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 			else
 				solAssert(false, "Contract member is neither variable nor function.");
 			utils().convertType(type, type.isPayable() ? *TypeProvider::payableAddress() : *TypeProvider::address(), true);
+			m_context.appendDebugInfo("push identifier of: " + declaration->location().text() + " -> " + toHex(identifier, HexPrefix::Add));
 			m_context << identifier;
 		}
 		else
@@ -2112,6 +2130,58 @@ bool ExpressionCompiler::visit(IndexRangeAccess const& _indexAccess)
 	return false;
 }
 
+bool ExpressionCompiler::visit(AwaitExpression const& _awaitExpression)
+{
+    debug("Visit await expression");
+    CompilerContext::LocationSetter locationSetter(m_context, _awaitExpression);
+
+    _awaitExpression.expression().accept(*this);
+
+    auto stackHeight = m_context.stackHeight();
+
+    // Halt the execution after await expression and return nothing
+    m_context << Instruction::STOP;
+
+    auto call = dynamic_cast<FunctionCall const*>(&_awaitExpression.expression());
+    auto callType = dynamic_cast<FunctionType const *>(call->expression().annotation().type);
+    solAssert(callType, "fail to convert function call: " + callType->toString(false));
+
+    // Set callback entry to the continuation code.
+    m_context.startAwaitCallback(_awaitExpression);
+
+    // Load context from calldata of callback
+    // callback calldata layout: [callback_id, return_params, context]
+    unsigned offset = CompilerUtils::dataStartOffset + utils().sizeOnCalldata(callType->returnParameterTypes());
+
+    m_context << offset;
+    // stack: [offset] top
+    auto tagLoadContext = m_context.newTag("load context");
+    m_context << tagLoadContext;
+    utils().loadFromMemoryDynamic(*TypeProvider::uint256(), true);
+    // stack: [context..., offset_new] top
+    // while (offset_new < calldata_size)
+    m_context << Instruction::DUP1 << Instruction::CALLDATASIZE << Instruction::GT;
+    m_context.appendConditionalJumpTo(tagLoadContext);  // continue
+    // stack: [context..., context_n, offset_new] top
+    m_context << Instruction::POP;
+    // stack: [context..., context_n] top
+
+    // Load return values from calldata
+    if (!callType->returnParameterTypes().empty())
+    {
+        m_context << CompilerUtils::dataStartOffset;
+        m_context << Instruction::DUP1 << Instruction::CALLDATASIZE << Instruction::SUB;
+        // stack: [context..., context_n, return_offset, return_size] top
+        CompilerUtils(m_context).abiDecode(callType->returnParameterTypes());
+        // stack: [context..., context_n, return_1..., return_n] top
+    }
+
+    // resume the stack deposit as if it is never interrupted
+    m_context.setStackOffset((int)stackHeight);
+
+    return false;
+}
+
 void ExpressionCompiler::endVisit(Identifier const& _identifier)
 {
 	CompilerContext::LocationSetter locationSetter(m_context, _identifier);
@@ -2450,7 +2520,8 @@ void ExpressionCompiler::appendExpOperatorCode(Type const& _valueType, Type cons
 void ExpressionCompiler::appendExternalFunctionCall(
 	FunctionType const& _functionType,
 	vector<ASTPointer<Expression const>> const& _arguments,
-	bool _tryCall
+	bool _tryCall,
+    uint32_t _callbackSelector
 )
 {
 	solAssert(
@@ -2458,17 +2529,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		_arguments.size() == _functionType.parameterTypes().size(), ""
 	);
 
-	// Solidity++: modify CALL stack layout
-
-	// From:
-	// <stack top>
-	// value [if _functionType.valueSet()]
-	// gas [if _functionType.gasSet()]
-	// self object [if bound - moved to top right away]
-	// function identifier [unless bare]
-	// contract address
-
-	// To:
+	// Solidity++: CALL stack layout
 	// <stack top>
 	// amount [if _functionType.valueSet()]
 	// token  [if _functionType.valueSet()]
@@ -2483,6 +2544,15 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	unsigned valueStackPos = m_context.currentToBaseStackOffset(1);
 	unsigned tokenStackPos = m_context.currentToBaseStackOffset(2);
 
+	m_context.appendDebugInfo("ExpressionCompiler::appendExternalFunctionCall(" + _functionType.externalSignature() + ",");
+	m_context.appendDebugInfo("      args: [");
+	for(auto arg : _arguments)
+	{
+	    m_context.appendDebugInfo("              " + arg->location().text());
+	}
+	m_context.appendDebugInfo("            ]");
+	m_context.appendDebugInfo(")");
+
 	// move self object to top
 	if (_functionType.bound())
 		utils().moveToStackTop(0, _functionType.selfType()->sizeOnStack());
@@ -2495,7 +2565,8 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 	bool returnSuccessConditionAndReturndata = funKind == FunctionType::Kind::BareCall || funKind == FunctionType::Kind::BareDelegateCall || funKind == FunctionType::Kind::BareStaticCall;
 	bool isDelegateCall = funKind == FunctionType::Kind::BareDelegateCall || funKind == FunctionType::Kind::DelegateCall;
-	bool useStaticCall = funKind == FunctionType::Kind::BareStaticCall || (_functionType.stateMutability() <= StateMutability::View && m_context.evmVersion().hasStaticCall());
+    // Solidity++: disable STATICCALL
+	bool useStaticCall = false;  // funKind == FunctionType::Kind::BareStaticCall || (_functionType.stateMutability() <= StateMutability::View && m_context.evmVersion().hasStaticCall());
 
 	if (_tryCall)
 	{
@@ -2511,6 +2582,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// TypePointers const& returnTypes = returnInfo.returnTypes;
 
 	// Evaluate arguments.
+	m_context.appendDebugInfo("evaluate arguments");
 	TypePointers argumentTypes;
 	TypePointers parameterTypes = _functionType.parameterTypes();
 	if (_functionType.bound())
@@ -2520,6 +2592,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	}
 	for (size_t i = 0; i < _arguments.size(); ++i)
 	{
+	    m_context.appendDebugInfo("evaluate arg[" + to_string(i) + "]: " + _arguments[i]->location().text());
 		_arguments[i]->accept(*this);
 		argumentTypes.push_back(_arguments[i]->annotation().type);
 	}
@@ -2554,6 +2627,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// }
 
 	// Copy function identifier to memory.
+	m_context.appendDebugInfo("copy function identifier to memory.");
 	utils().fetchFreeMemoryPointer();
 	if (!_functionType.isBareCall())
 	{
@@ -2564,6 +2638,8 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// If the function takes arbitrary parameters or is a bare call, copy dynamic length data in place.
 	// Move arguments to memory, will not update the free memory pointer (but will update the memory
 	// pointer on the stack).
+	m_context.appendDebugInfo("move arguments to memory");
+
 	bool encodeInPlace = _functionType.takesArbitraryParameters() || _functionType.isBareCall();
 	if (_functionType.kind() == FunctionType::Kind::ECRecover)
 		// This would be the only combination of padding and in-place encoding,
@@ -2578,24 +2654,32 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		encodeForLibraryCall
 	);
 
-	// Solidity++:
-	// From:
-	// Stack now:
-	// <stack top>
-	// input_memory_end
-	// value [if _functionType.valueSet()]
-	// gas [if _functionType.gasSet()]
-	// function identifier [unless bare]
-	// contract address
+    // Solidity++: copy callback selector and context to memory
+    if(!!_callbackSelector)
+    {
+        m_context.appendDebugInfo("push callback selector: " + toHex(_callbackSelector, HexPrefix::Add));
+        m_context << _callbackSelector;
+        utils().storeInMemoryDynamic(IntegerType(32), false);  // will update memory pointer
+        // stack: [context_1, ..., context_n, address, function_id, (token), (amount), input_memory_end] top
+        unsigned contextOffset = (_functionType.valueSet() ? 2 : 0) + 3;
+        unsigned contextSize = m_context.stackHeight() - contextOffset;
+        // @todo: improve context packing
+        solAssert(contextSize >= 0 && contextSize < 12, "Bad context size: " + to_string(contextSize));
 
-	// To:
-	// Stack now:
-	// <stack top>
-	// input_memory_end
-	// amount [if _functionType.valueSet()]
-	// token  [if _functionType.valueSet()]
-	// function identifier [unless bare]
-	// contract address
+        for(unsigned i = 1; i <= contextSize; i++) {
+            // fetch the i-th item of context
+            auto depth = contextOffset + contextSize + 1 - i;
+            m_context << dupInstruction(depth);
+            // stack: [context_1, ..., context_n, address, function_id, (token), (amount), input_memory_end, context_i] top
+
+            // append item_i of context to memory
+            utils().storeInMemoryDynamic(IntegerType(256));
+            // stack: [context_1, ..., context_n, address, function_id, (token), (amount), new_input_memory_end] top
+        }
+    }
+
+	// Solidity++:
+	// Stack now: [address, function_id, (token), (amount), input_memory_end] top
 
 	// Output data will replace input data, unless we have ECRecover (then, output
 	// area will be 32 bytes just before input area).
@@ -2604,6 +2688,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// Solidity++: no output data
 	// m_context << u256(retSize);
 
+	m_context.appendDebugInfo("the start of input");
 	utils().fetchFreeMemoryPointer(); // This is the start of input
 
 	// if (funKind == FunctionType::Kind::ECRecover)
@@ -2620,11 +2705,17 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// 	m_context << Instruction::DUP2;
 	// }
 
-	// Solidity++:
-	m_context << Instruction::DUP1 << Instruction::DUP3 << Instruction::SUB;
+	// Solidity++: @todo: use utils.toSizeAfterFreeMemoryPointer() instead
+	m_context.appendDebugInfo("stack: [input_start] top");
+	m_context << Instruction::DUP1;
+    m_context.appendDebugInfo("stack: [input_start, input_start] top");
+	m_context << Instruction::DUP3;
+    m_context.appendDebugInfo("stack: [input_start, input_start, input_end] top");
+    m_context << Instruction::SUB;
+    m_context.appendDebugInfo("stack: [input_start, input_size] top");
 	m_context << Instruction::SWAP1;
+    m_context.appendDebugInfo("stack: [input_size, input_start] top");
 
-	// Solidity++:
 	// CALL arguments: inSize, inOff (already present up to here)
 	// [value,] addr (stack top)
 	if (isDelegateCall)
@@ -2633,19 +2724,23 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		solAssert(!_functionType.valueSet(), "Value set for staticcall");
 	else if (_functionType.valueSet())
 	{
+	    m_context.appendDebugInfo("value to send");
 		m_context << dupInstruction(m_context.baseToCurrentStackOffset(valueStackPos));
+		m_context.appendDebugInfo("token id");
 		m_context << dupInstruction(m_context.baseToCurrentStackOffset(tokenStackPos));  // Solidity++: push tokenId
 	}
 	else
 	{
 		// Solidity++: 0 VITE
+		m_context.appendDebugInfo("no value to send (0 VITE)");
 		m_context << u256(0) << u256("0x2445f6e5cde8c2c70e44");
 	}
-	
+
+	m_context.appendDebugInfo("contract address");
 	m_context << dupInstruction(m_context.baseToCurrentStackOffset(contractStackPos));
 
 
-	// Solidity++: disable contract existence
+	// Solidity++: disable contract existence checking
 
     //	bool existenceChecked = false;
     //	// Check the target contract exists (has code) for non-low-level calls.
@@ -2682,14 +2777,13 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	else if (useStaticCall)
 		m_context << Instruction::STATICCALL;
 	else
-		m_context << Instruction::CALL;  // Solidity++: @todo redefine CALLCODE opcode
+		m_context << Instruction::CALL;
 
 	unsigned remainsSize =
 		2u + // contract address, input_memory_end
 		(_functionType.valueSet() ? 2 : 0) +  // Solidity++: amount + tokenId
 		// (_functionType.gasSet() ? 1 : 0) +  // Solidity++: no gas
 		(!_functionType.isBareCall() ? 1 : 0);
-
 
 	evmasm::AssemblyItem endTag = m_context.newTag();
 
@@ -2702,6 +2796,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// else
 	// 	m_context << swapInstruction(remainsSize);
 
+	m_context.appendDebugInfo("pop stack slots " + to_string(remainsSize));
 	utils().popStackSlots(remainsSize);
 
 	// Only success flag is remaining on stack.
@@ -2738,7 +2833,11 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		m_context << Instruction::SUB << Instruction::MLOAD;
 	}
 
-	// Solidity++: no return data
+	// Solidity++: no real return data, but need placeholder
+	for(auto returnType : _functionType.returnParameterTypes()) {
+	    utils().pushZeroValue(*returnType);  // just a placeholder, do not use it
+	}
+
 	// else if (!returnTypes.empty())
 	// {
 	// 	utils().fetchFreeMemoryPointer();
@@ -2794,6 +2893,7 @@ void ExpressionCompiler::appendExpressionCopyToMemory(Type const& _expectedType,
 
 void ExpressionCompiler::appendVariable(VariableDeclaration const& _variable, Expression const& _expression)
 {
+    m_context.appendDebugInfo("ExpressionCompiler::appendVariable(" + _variable.toString() + ", " + _expression.location().text() + ")");
 	if (_variable.isConstant())
 		acceptAndConvert(*_variable.value(), *_variable.annotation().type);
 	else if (_variable.immutable())

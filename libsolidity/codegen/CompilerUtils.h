@@ -291,6 +291,9 @@ public:
 	/// Starting offset for memory available to the user (aka the contract).
 	static size_t const generalPurposeMemoryStart;
 
+	/// Size on calldata
+    static unsigned sizeOnCalldata(const TypePointers _types);
+
 private:
 	/// Appends code that cleans higher-order bits for integer types.
 	void cleanHigherOrderBits(IntegerType const& _typeOnStack);

@@ -98,7 +98,7 @@ public:
 	/// Creates a new compiler stack.
 	/// @param _readFile callback used to read files for import statements. Must return
 	/// and must not emit exceptions.
-	explicit CompilerStack(ReadCallback::Callback _readFile = ReadCallback::Callback());
+	explicit CompilerStack(ReadCallback::Callback _readFile = ReadCallback::Callback(), bool _verbose = false);
 
 	~CompilerStack();
 
@@ -476,6 +476,9 @@ private:
 		FunctionDefinition const& _function
 	) const;
 
+	/// Solidity++: output debug info in verbose mode
+	void debug(std::string info) const { if (m_verbose) std::clog << "[CompilerStack] " << info << std::endl; }
+
 	ReadCallback::Callback m_readFile;
 	OptimiserSettings m_optimiserSettings;
 	RevertStrings m_revertStrings = RevertStrings::Default;
@@ -511,6 +514,7 @@ private:
 	/// If this is true, the stack will refuse to generate code.
 	bool m_hasError = false;
 	bool m_release = VersionIsRelease;
+	bool m_verbose = false;  // Solidity++
 };
 
 }

@@ -547,7 +547,7 @@ Parser::FunctionHeaderParserResult Parser::parseFunctionHeader(bool _isStateVari
 		// Solidity++: execution behavior of a function: sync / async
         else if (TokenTraits::isExecutionBehaviorSpecifier(token))
         {
-            if (result.executionBehavior != ExecutionBehavior::Sync)
+            if (result.executionBehavior == ExecutionBehavior::Async)
             {
                 parserError(
                         100101_error,
@@ -639,17 +639,16 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 
 	FunctionHeaderParserResult header = parseFunctionHeader(false);
 
-	// Solidity++: the visibility of onMessage is external
 	if(kind == Token::OnMessage)
 	{
-		header.visibility = Visibility::External;
+		header.visibility = Visibility::External;  // Solidity++: the visibility of onMessage is external
 		header.executionBehavior = ExecutionBehavior::Async;
 	}
 
-	// Solidity++: the visibility of getter is offchain
 	else if(kind == Token::Getter)
 	{
-		header.visibility = Visibility::Offchain;
+		header.visibility = Visibility::Offchain;  // Solidity++: the visibility of getter is offchain
+        header.executionBehavior = ExecutionBehavior::Sync;
 	}
 
 	ASTPointer<Block> block;
@@ -1555,7 +1554,6 @@ ASTPointer<SendStatement> Parser::parseSendStatement(ASTPointer<ASTString> const
 	return statement;
 }
 
-
 ASTPointer<Statement> Parser::parseSimpleStatement(ASTPointer<ASTString> const& _docString)
 {
 	RecursionGuard recursionGuard(*this);
@@ -1782,13 +1780,17 @@ ASTPointer<Expression> Parser::parseUnaryExpression(
 	ASTNodeFactory nodeFactory = _partiallyParsedExpression ?
 		ASTNodeFactory(*this, _partiallyParsedExpression) : ASTNodeFactory(*this);
 	Token token = m_scanner->currentToken();
-	if (!_partiallyParsedExpression && (TokenTraits::isUnaryOp(token) || TokenTraits::isCountOp(token)))
+	if (!_partiallyParsedExpression && (TokenTraits::isUnaryOp(token) || TokenTraits::isCountOp(token) || token == Token::Await))
 	{
 		// prefix expression
 		m_scanner->next();
 		ASTPointer<Expression> subExpression = parseUnaryExpression();
 		nodeFactory.setEndPositionFromNode(subExpression);
-		return nodeFactory.createNode<UnaryOperation>(token, subExpression, true);
+
+        if(token == Token::Await)  // await expression
+            return nodeFactory.createNode<AwaitExpression>(subExpression);
+        else  // prefix unary operation expression
+		    return nodeFactory.createNode<UnaryOperation>(token, subExpression, true);
 	}
 	else
 	{

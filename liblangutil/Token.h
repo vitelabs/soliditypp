@@ -252,7 +252,8 @@ namespace solidity::langutil
 	/* Solidity++ keywords */                            			   \
 	K(OnMessage, "onMessage", 0)                                       \
 	K(Getter, "getter", 0)                                       	   \
-    K(Async, "async", 0)                                \
+    K(Async, "async", 0)                                               \
+	K(Await, "await", 0)                                               \
 	\
 	/* Yul-specific tokens, but not keywords. */                       \
 	T(Leave, "leave", 0)                                               \

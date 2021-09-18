@@ -71,10 +71,11 @@ using solidity::util::toHex;
 
 static int g_compilerStackCounts = 0;
 
-CompilerStack::CompilerStack(ReadCallback::Callback _readFile):
+CompilerStack::CompilerStack(ReadCallback::Callback _readFile, bool _verbose):
 	m_readFile{std::move(_readFile)},
 	m_enabledSMTSolvers{smtutil::SMTSolverChoice::All()},
-	m_errorReporter{m_errorList}
+	m_errorReporter{m_errorList},
+    m_verbose(_verbose)
 {
 	// Because TypeProvider is currently a singleton API, we must ensure that
 	// no more than one entity is actually using it at a time.
@@ -238,6 +239,7 @@ void CompilerStack::setSources(StringMap _sources)
 
 bool CompilerStack::parse()
 {
+    debug("Parsing...");
 	if (m_stackState != SourcesSet)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Must call parse only after the SourcesSet state."));
 	m_errorReporter.clear();
@@ -282,6 +284,7 @@ bool CompilerStack::parse()
 
 	storeContractDefinitions();
 
+    debug("Parsed.");
 	return !m_hasError;
 }
 
@@ -309,6 +312,7 @@ void CompilerStack::importASTs(map<string, Json::Value> const& _sources)
 
 bool CompilerStack::analyze()
 {
+    debug("Analyzing...");
 	if (m_stackState != ParsedAndImported || m_stackState >= AnalysisPerformed)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Must call analyze only after parsing was performed."));
 	resolveImports();
@@ -321,11 +325,13 @@ bool CompilerStack::analyze()
 
 	try
 	{
+	    debug("Syntax checking...");
 		SyntaxChecker syntaxChecker(m_errorReporter, m_optimiserSettings.runYulOptimiser);
 		for (Source const* source: m_sourceOrder)
 			if (source->ast && !syntaxChecker.checkSyntax(*source->ast))
 				noErrors = false;
 
+        debug("Doc strings parsing...");
 		DocStringTagParser DocStringTagParser(m_errorReporter);
 		for (Source const* source: m_sourceOrder)
 			if (source->ast && !DocStringTagParser.parseDocStrings(*source->ast))
@@ -351,6 +357,7 @@ bool CompilerStack::analyze()
 			if (source->ast && !resolver.resolveNamesAndTypes(*source->ast))
 				return false;
 
+        debug("Declaration type checking...");
 		DeclarationTypeChecker declarationTypeChecker(m_errorReporter, m_evmVersion);
 		for (Source const* source: m_sourceOrder)
 			if (source->ast && !declarationTypeChecker.check(*source->ast))
@@ -360,6 +367,7 @@ bool CompilerStack::analyze()
 		// contract or function level.
 		// This also calculates whether a contract is abstract, which is needed by the
 		// type checker.
+        debug("Contract level checking...");
 		ContractLevelChecker contractLevelChecker(m_errorReporter);
 
 		for (Source const* source: m_sourceOrder)
@@ -367,6 +375,7 @@ bool CompilerStack::analyze()
 				noErrors = contractLevelChecker.check(*sourceAst);
 
 		// Requires ContractLevelChecker
+        debug("Doc strings analysing ...");
 		DocStringAnalyser docStringAnalyser(m_errorReporter);
 		for (Source const* source: m_sourceOrder)
 			if (source->ast && !docStringAnalyser.analyseDocStrings(*source->ast))
@@ -379,6 +388,7 @@ bool CompilerStack::analyze()
 		//
 		// Note: this does not resolve overloaded functions. In order to do that, types of arguments are needed,
 		// which is only done one step later.
+        debug("Type checking...");
 		TypeChecker typeChecker(m_evmVersion, m_errorReporter);
 		for (Source const* source: m_sourceOrder)
 			if (source->ast && !typeChecker.checkTypeRequirements(*source->ast))
@@ -387,6 +397,7 @@ bool CompilerStack::analyze()
 		if (noErrors)
 		{
 			// Checks that can only be done when all types of all AST nodes are known.
+            debug("Post type checking...");
 			PostTypeChecker postTypeChecker(m_errorReporter);
 			for (Source const* source: m_sourceOrder)
 				if (source->ast && !postTypeChecker.check(*source->ast))
@@ -397,6 +408,7 @@ bool CompilerStack::analyze()
 
 		// Check that immutable variables are never read in c'tors and assigned
 		// exactly once
+        debug("Immutable variables checking...");
 		if (noErrors)
 			for (Source const* source: m_sourceOrder)
 				if (source->ast)
@@ -408,6 +420,7 @@ bool CompilerStack::analyze()
 		{
 			// Control flow graph generator and analyzer. It can check for issues such as
 			// variable is used before it is assigned to.
+            debug("Control flow graph constructing...");
 			CFG cfg(m_errorReporter);
 			for (Source const* source: m_sourceOrder)
 				if (source->ast && !cfg.constructFlow(*source->ast))
@@ -415,6 +428,7 @@ bool CompilerStack::analyze()
 
 			if (noErrors)
 			{
+                debug("Control flow graph analyzing...");
 				ControlFlowAnalyzer controlFlowAnalyzer(cfg, m_errorReporter);
 				for (Source const* source: m_sourceOrder)
 					if (source->ast && !controlFlowAnalyzer.analyze(*source->ast))
@@ -425,6 +439,7 @@ bool CompilerStack::analyze()
 		if (noErrors)
 		{
 			// Checks for common mistakes. Only generates warnings.
+            debug("Static analyzing...");
 			StaticAnalyzer staticAnalyzer(m_errorReporter);
 			for (Source const* source: m_sourceOrder)
 				if (source->ast && !staticAnalyzer.analyze(*source->ast))
@@ -434,6 +449,7 @@ bool CompilerStack::analyze()
 		if (noErrors)
 		{
 			// Check for state mutability in every function.
+            debug("View pure checking...");
 			vector<ASTPointer<ASTNode>> ast;
 			for (Source const* source: m_sourceOrder)
 				if (source->ast)
@@ -445,6 +461,7 @@ bool CompilerStack::analyze()
 
 		if (noErrors)
 		{
+            debug("Model checking...");
 			ModelChecker modelChecker(m_errorReporter, m_smtlib2Responses, m_modelCheckerSettings, m_readFile, m_enabledSMTSolvers);
 			for (Source const* source: m_sourceOrder)
 				if (source->ast)
@@ -463,6 +480,7 @@ bool CompilerStack::analyze()
 	if (!noErrors)
 		m_hasError = true;
 
+    debug("Analyzed.");
 	return !m_hasError;
 }
 
@@ -505,6 +523,7 @@ bool CompilerStack::isRequestedContract(ContractDefinition const& _contract) con
 
 bool CompilerStack::compile(State _stopAfter)
 {
+    debug("Compiling...");
 	m_stopAfter = _stopAfter;
 	if (m_stackState < AnalysisPerformed)
 		if (!parseAndAnalyze(_stopAfter))
@@ -524,6 +543,7 @@ bool CompilerStack::compile(State _stopAfter)
 			if (auto contract = dynamic_cast<ContractDefinition const*>(node.get()))
 				if (isRequestedContract(*contract))
 				{
+				    debug("Compiling contract: " + contract->fullyQualifiedName());
 					try
 					{
 						if (m_viaIR || m_generateIR || m_generateEwasm)
@@ -570,11 +590,13 @@ bool CompilerStack::compile(State _stopAfter)
 				}
 	m_stackState = CompilationSuccessful;
 	this->link();
+	debug("Compiled.");
 	return true;
 }
 
 void CompilerStack::link()
 {
+    debug("Linking...");
 	solAssert(m_stackState >= CompilationSuccessful, "");
 	for (auto& contract: m_contracts)
 	{
@@ -583,6 +605,7 @@ void CompilerStack::link()
 		// Solidity++: link offchain functions
 		contract.second.offchainObject.link(m_libraries);
 	}
+	debug("Linked.");
 }
 
 vector<string> CompilerStack::contractNames() const
@@ -1217,7 +1240,7 @@ void CompilerStack::compileContract(
 
 	Contract& compiledContract = m_contracts.at(_contract.fullyQualifiedName());
 
-	shared_ptr<Compiler> compiler = make_shared<Compiler>(m_evmVersion, m_revertStrings, m_optimiserSettings);
+	shared_ptr<Compiler> compiler = make_shared<Compiler>(m_evmVersion, m_revertStrings, m_optimiserSettings, m_verbose);
 	compiledContract.compiler = compiler;
 
 	// bytes cborEncodedMetadata = createCBORMetadata(compiledContract);
@@ -1228,7 +1251,9 @@ void CompilerStack::compileContract(
 		// compiler->compileContract(_contract, _otherCompilers, cborEncodedMetadata);
 		
 		// Solidity++:
+		debug("Compile Vite contract");
 		compiler->compileViteContract(_contract, _otherCompilers);
+
 	}
 	catch(evmasm::OptimizerException const&)
 	{
@@ -1240,11 +1265,12 @@ void CompilerStack::compileContract(
 	try
 	{
 		// Assemble deployment (incl. runtime)  object.
+		debug("Assemble deployment object");
 		compiledContract.object = compiledContract.evmAssembly->assemble();
 	}
-	catch(evmasm::AssemblyException const&)
+	catch(evmasm::AssemblyException const& e)
 	{
-		solAssert(false, "Assembly exception for bytecode");
+		solAssert(false, "Assembly exception for bytecode: " + to_string(e));
 	}
 	solAssert(compiledContract.object.immutableReferences.empty(), "Leftover immutables.");
 
@@ -1253,6 +1279,7 @@ void CompilerStack::compileContract(
 	try
 	{
 		// Assemble runtime object.
+		debug("Assemble runtime object");
 		compiledContract.runtimeObject = compiledContract.evmRuntimeAssembly->assemble();
 	}
 	catch(evmasm::AssemblyException const&)
@@ -1265,7 +1292,8 @@ void CompilerStack::compileContract(
 	solAssert(compiledContract.offchainAssembly, "");
 	try
 	{
-		// Assemble runtime object.
+		// Assemble offchain object.
+		debug("Assemble offchain object");
 		compiledContract.offchainObject = compiledContract.offchainAssembly->assemble();
 	}
 	catch(evmasm::AssemblyException const&)

@@ -3,8 +3,8 @@ set(ORIGINAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/solidity/libevmasm)
 set(sources
 	Assembly.cpp
 	Assembly.h
-	${ORIGINAL_SOURCE_DIR}/AssemblyItem.cpp
-	${ORIGINAL_SOURCE_DIR}/AssemblyItem.h
+	AssemblyItem.cpp
+	AssemblyItem.h
 	${ORIGINAL_SOURCE_DIR}/BlockDeduplicator.cpp
 	${ORIGINAL_SOURCE_DIR}/BlockDeduplicator.h
 	${ORIGINAL_SOURCE_DIR}/CommonSubexpressionEliminator.cpp

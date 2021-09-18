@@ -3433,9 +3433,12 @@ bool FunctionType::isBareCall() const
 
 string FunctionType::externalSignature() const
 {
-	solAssert(m_declaration != nullptr, "External signature of function needs declaration");
-	solAssert(!m_declaration->name().empty(), "Fallback function has no signature.");
-	switch (kind())
+//	solAssert(m_declaration != nullptr, "External signature of function needs declaration");
+//	solAssert(!m_declaration->name().empty(), "Fallback function has no signature.");
+	if (!m_declaration || m_declaration->name().empty())
+	    return "_()";
+
+    switch (kind())
 	{
 	case Kind::Internal:
 	case Kind::External:
@@ -3445,7 +3448,8 @@ string FunctionType::externalSignature() const
 	case Kind::Declaration:
 		break;
 	default:
-		solAssert(false, "Invalid function type for requesting external signature.");
+	    return "_" + richIdentifier();
+//		solAssert(false, "Invalid function type for requesting external signature.");
 	}
 
 	// "inLibrary" is only relevant if this is not an event.

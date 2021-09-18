@@ -21,7 +21,7 @@ void Compiler::compileContract(
 	bytes const& _metadata
 )
 {
-	ContractCompiler runtimeCompiler(nullptr, m_runtimeContext, m_optimiserSettings);
+	ContractCompiler runtimeCompiler(nullptr, m_runtimeContext, m_optimiserSettings, m_verbose);
 	runtimeCompiler.compileContract(_contract, _otherCompilers);
 
 	m_runtimeContext.appendAuxiliaryData(_metadata);
@@ -47,7 +47,8 @@ void Compiler::compileViteContract(
 	std::map<ContractDefinition const*, shared_ptr<Compiler const>> const& _otherCompilers
 )
 {
-	ContractCompiler runtimeCompiler(nullptr, m_runtimeContext, m_optimiserSettings);
+    debug("Compiling runtime");
+	ContractCompiler runtimeCompiler(nullptr, m_runtimeContext, m_optimiserSettings, m_verbose);
 	runtimeCompiler.compileContract(_contract, _otherCompilers);
 
 	// This might modify m_runtimeContext because it can access runtime functions at
@@ -56,18 +57,22 @@ void Compiler::compileViteContract(
 	// The creation code will be executed at most once, so we modify the optimizer
 	// settings accordingly.
 	creationSettings.expectedExecutionsPerDeployment = 1;
-	ContractCompiler creationCompiler(&runtimeCompiler, m_context, creationSettings);
+	ContractCompiler creationCompiler(&runtimeCompiler, m_context, creationSettings, m_verbose);
+	debug("Compiling constructor");
 	m_runtimeSub = creationCompiler.compileConstructor(_contract, _otherCompilers);
 
-	m_context.optimise(m_optimiserSettings);
+	// Solidity++: @todo enable optimising for awaitable code
+	debug("Optimising... disabled !!!");
+    //	m_context.optimise(m_optimiserSettings);
 
 	// Compile offchain functions
-	ContractCompiler offchainCompiler(nullptr, m_offchainContext, m_optimiserSettings);
+	debug("Compiling offchain functions");
+	ContractCompiler offchainCompiler(nullptr, m_offchainContext, m_optimiserSettings, m_verbose);
 	offchainCompiler.compileOffchain(_contract, _otherCompilers);
 
 	solAssert(m_context.appendYulUtilityFunctionsRan(), "appendYulUtilityFunctions() was not called in compiler context.");
 	solAssert(m_runtimeContext.appendYulUtilityFunctionsRan(), "appendYulUtilityFunctions() was not called in runtime compiler context.");
-
+	debug("Compiled.");
 }
 
 std::shared_ptr<evmasm::Assembly> Compiler::runtimeAssemblyPtr() const

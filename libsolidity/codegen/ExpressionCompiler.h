@@ -43,10 +43,12 @@ class ExpressionCompiler: private ASTConstVisitor
 public:
 	ExpressionCompiler(
 		CompilerContext& _compilerContext,
-		bool _optimiseOrderLiterals
+		bool _optimiseOrderLiterals,
+		bool _verbose = false
 	):
 		m_optimiseOrderLiterals(_optimiseOrderLiterals),
-		m_context(_compilerContext)
+		m_context(_compilerContext),
+		m_verbose(_verbose)
 	{}
 
 	/// Compile the given @a _expression and leave its value on the stack.
@@ -61,6 +63,9 @@ public:
 	/// Appends code for a Constant State Variable accessor function
 	void appendConstStateVariableAccessor(VariableDeclaration const& _varDecl);
 
+	/// Solidity++: output debug info in verbose mode
+	void debug(std::string info) const { if (m_verbose) std::clog << "            [ExpressionCompiler] " << info << std::endl; }
+
 private:
 	bool visit(Conditional const& _condition) override;
 	bool visit(Assignment const& _assignment) override;
@@ -73,6 +78,7 @@ private:
 	bool visit(MemberAccess const& _memberAccess) override;
 	bool visit(IndexAccess const& _indexAccess) override;
 	bool visit(IndexRangeAccess const& _indexAccess) override;
+    bool visit(AwaitExpression const& _awaitExpression) override;  // Solidity++
 	void endVisit(Identifier const& _identifier) override;
 	void endVisit(Literal const& _literal) override;
 
@@ -90,11 +96,13 @@ private:
 
 	/// Appends code to call a function of the given type with the given arguments.
 	/// @param _tryCall if true, this is the external call of a try statement. In that case,
+	/// @param _callbackSelector callback selector of a 4-bytes fixed hash used in return statement.
 	///                 returns success flag on top of stack and does not revert on failure.
 	void appendExternalFunctionCall(
 		FunctionType const& _functionType,
 		std::vector<ASTPointer<Expression const>> const& _arguments,
-		bool _tryCall
+		bool _tryCall,
+		uint32_t _callbackSelector
 	);
 	/// Appends code that evaluates a single expression and moves the result to memory. The memory offset is
 	/// expected to be on the stack and is updated by this call.
@@ -126,6 +134,9 @@ private:
 	bool m_optimiseOrderLiterals;
 	CompilerContext& m_context;
 	std::unique_ptr<LValue> m_currentLValue;
+
+	// Solidity++:
+	bool m_verbose = false;
 
 };
 

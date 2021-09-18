@@ -109,6 +109,7 @@ public:
 	bool visit(ElementaryTypeNameExpression const& _node) override;
 	bool visit(Literal const& _node) override;
 	bool visit(StructuredDocumentation const& _node) override;
+    bool visit(AwaitExpression const& _node) override;  // Solidity++
 
 	void endVisit(EventDefinition const&) override;
 

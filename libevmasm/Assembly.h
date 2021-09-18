@@ -28,8 +28,8 @@ using AssemblyPointer = std::shared_ptr<Assembly>;
 class Assembly
 {
 public:
-	AssemblyItem newTag() { assertThrow(m_usedTags < 0xffffffff, AssemblyException, ""); return AssemblyItem(Tag, m_usedTags++); }
-	AssemblyItem newPushTag() { assertThrow(m_usedTags < 0xffffffff, AssemblyException, ""); return AssemblyItem(PushTag, m_usedTags++); }
+    AssemblyItem newTag(std::string const& _description = "") { assertThrow(m_usedTags < 0xffffffff, AssemblyException, ""); return AssemblyItem(Tag, m_usedTags++, langutil::SourceLocation(), _description); }
+    AssemblyItem newPushTag(std::string const& _description = "") { assertThrow(m_usedTags < 0xffffffff, AssemblyException, ""); return AssemblyItem(PushTag, m_usedTags++, langutil::SourceLocation(), _description); }
 	/// Returns a tag identified by the given name. Creates it if it does not yet exist.
 	AssemblyItem namedTag(std::string const& _name);
 	// Solidity++: keccak256 -> blake2b
@@ -56,8 +56,10 @@ public:
 	void appendImmutable(std::string const& _identifier) { append(newPushImmutable(_identifier)); }
 	void appendImmutableAssignment(std::string const& _identifier) { append(newImmutableAssignment(_identifier)); }
 
+	void appendDebugInfo(std::string const& _debugInfo);
+
 	AssemblyItem appendJump() { auto ret = append(newPushTag()); append(Instruction::JUMP); return ret; }
-	AssemblyItem appendJumpI() { auto ret = append(newPushTag()); append(Instruction::JUMPI); return ret; }
+	AssemblyItem appendJumpI(std::string const& _description = "") { auto ret = append(newPushTag(_description)); append(Instruction::JUMPI); return ret; }
 	AssemblyItem appendJump(AssemblyItem const& _tag) { auto ret = append(_tag.pushTag()); append(Instruction::JUMP); return ret; }
 	AssemblyItem appendJumpI(AssemblyItem const& _tag) { auto ret = append(_tag.pushTag()); append(Instruction::JUMPI); return ret; }
 
@@ -180,6 +182,9 @@ protected:
 	int m_deposit = 0;
 
 	langutil::SourceLocation m_currentSourceLocation;
+
+	std::map<size_t, std::string> m_debugInfos;
+
 public:
 	size_t m_currentModifierDepth = 0;
 };

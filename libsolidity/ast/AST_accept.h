@@ -693,6 +693,7 @@ void SendStatement::accept(ASTVisitor& _visitor)
 	_visitor.endVisit(*this);
 }
 
+// Solidity++:
 void SendStatement::accept(ASTConstVisitor& _visitor) const
 {
 	if (_visitor.visit(*this))
@@ -701,6 +702,26 @@ void SendStatement::accept(ASTConstVisitor& _visitor) const
         m_expression->accept(_visitor);
 	}
 	_visitor.endVisit(*this);
+}
+
+// Solidity++:
+void AwaitExpression::accept(ASTVisitor& _visitor)
+{
+    if (_visitor.visit(*this))
+    {
+        m_expression->accept(_visitor);
+    }
+    _visitor.endVisit(*this);
+}
+
+// Solidity++:
+void AwaitExpression::accept(ASTConstVisitor& _visitor) const
+{
+    if (_visitor.visit(*this))
+    {
+        m_expression->accept(_visitor);
+    }
+    _visitor.endVisit(*this);
 }
 
 void ExpressionStatement::accept(ASTVisitor& _visitor)
