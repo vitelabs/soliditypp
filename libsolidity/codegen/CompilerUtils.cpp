@@ -45,19 +45,25 @@ void CompilerUtils::initialiseFreeMemoryPointer()
 
 void CompilerUtils::fetchFreeMemoryPointer()
 {
+    m_context.appendDebugInfo("CompilerUtils::fetchFreeMemoryPointer()");
 	m_context << u256(freeMemoryPointer) << Instruction::MLOAD;
+    m_context.appendDebugInfo("end of CompilerUtils::fetchFreeMemoryPointer()");
 }
 
 void CompilerUtils::storeFreeMemoryPointer()
 {
+    m_context.appendDebugInfo("CompilerUtils::storeFreeMemoryPointer()");
 	m_context << u256(freeMemoryPointer) << Instruction::MSTORE;
+    m_context.appendDebugInfo("end of CompilerUtils::storeFreeMemoryPointer()");
 }
 
 void CompilerUtils::allocateMemory()
 {
+    m_context.appendDebugInfo("CompilerUtils::allocateMemory()");
 	fetchFreeMemoryPointer();
 	m_context << Instruction::SWAP1 << Instruction::DUP2 << Instruction::ADD;
 	storeFreeMemoryPointer();
+    m_context.appendDebugInfo("end of CompilerUtils::allocateMemory()");
 }
 
 void CompilerUtils::allocateMemory(u256 const& size)
@@ -125,6 +131,13 @@ unsigned CompilerUtils::loadFromMemory(
 )
 {
 	solAssert(_type.category() != Type::Category::Array, "Unable to statically load dynamic type.");
+	m_context.appendDebugInfo("CompilerUtils::loadFromMemory("
+                              "offset=" + to_string(_offset) +
+                              ", type=" + _type.toString(false) +
+                              ", fromCalldata=" + to_string(_fromCalldata) +
+                              ", padToWordBoundaries=" + to_string(_padToWordBoundaries) +
+                              ")");
+
 	m_context << u256(_offset);
 	return loadFromMemoryHelper(_type, _fromCalldata, _padToWordBoundaries);
 }
@@ -161,14 +174,18 @@ void CompilerUtils::loadFromMemoryDynamic(
 
 void CompilerUtils::storeInMemory(unsigned _offset)
 {
+    m_context.appendDebugInfo("CompilerUtils::storeInMemory(offset=" + to_string(_offset) +")");
 	unsigned numBytes = prepareMemoryStore(*TypeProvider::uint256(), true);
 	if (numBytes > 0)
 		m_context << u256(_offset) << Instruction::MSTORE;
+	m_context.appendDebugInfo("end of CompilerUtils::storeInMemory()");
 }
 
 void CompilerUtils::storeInMemoryDynamic(Type const& _type, bool _padToWordBoundaries, bool _cleanup)
 {
 	// process special types (Reference, StringLiteral, Function)
+	auto comment = "CompilerUtils::storeInMemoryDynamic(type=" + _type.toString(false) + ", _padToWordBoundaries=" + to_string(_padToWordBoundaries) + ", _cleanup=" + to_string(_cleanup) + ")";
+	m_context.appendDebugInfo(comment);
 	if (auto ref = dynamic_cast<ReferenceType const*>(&_type))
 	{
 		solUnimplementedAssert(
@@ -200,6 +217,7 @@ void CompilerUtils::storeInMemoryDynamic(Type const& _type, bool _padToWordBound
 	{
 		unsigned numBytes = prepareMemoryStore(_type, _padToWordBoundaries, _cleanup);
 		m_context << Instruction::DUP2 << Instruction::MSTORE;
+		m_context.appendDebugInfo("bytes of type " + _type.toString(false) + ": " + to_string(numBytes));
 		m_context << u256(numBytes) << Instruction::ADD;
 	}
 	else // Should never happen
@@ -209,6 +227,7 @@ void CompilerUtils::storeInMemoryDynamic(Type const& _type, bool _padToWordBound
 			"Memory store of type " + _type.toString(true) + " not allowed."
 		);
 	}
+	m_context.appendDebugInfo("end of CompilerUtils::storeInMemoryDynamic()");
 }
 
 void CompilerUtils::abiDecode(TypePointers const& _typeParameters, bool _fromMemory)
@@ -395,6 +414,12 @@ void CompilerUtils::encodeToMemory(
 	bool _encodeAsLibraryTypes
 )
 {
+    m_context.appendDebugInfo("CompilerUtils::encodeToMemory()  stack[<v1> <v2> ... <vn> <mem>]");
+    m_context.appendDebugInfo("    givenTypes: [");
+    for(auto t : _givenTypes)
+        m_context.appendDebugInfo("            " + t->toString(false));
+    m_context.appendDebugInfo("            ]");
+
 	// stack: <v1> <v2> ... <vn> <mem>
 	bool const encoderV2 = m_context.useABICoderV2();
 	TypePointers targetTypes = _targetTypes.empty() ? _givenTypes : _targetTypes;
@@ -571,6 +596,7 @@ void CompilerUtils::encodeToMemory(
 	// remove unneeded stack elements (and retain memory pointer)
 	m_context << swapInstruction(argSize + dynPointers + 1);
 	popStackSlots(argSize + dynPointers + 1);
+	m_context.appendDebugInfo("end of encodeToMemory");
 }
 
 void CompilerUtils::abiEncodeV2(
@@ -584,7 +610,7 @@ void CompilerUtils::abiEncodeV2(
 		solAssert(!_encodeAsLibraryTypes, "Library calls cannot be packed.");
 
 	// stack: <$value0> <$value1> ... <$value(n-1)> <$headStart>
-
+	m_context.appendDebugInfo("CompilerUtils::abiEncodeV2()  stack[<$value0> <$value1> ... <$value(n-1)> <$headStart>] top");
 	string encoderName =
 		_padToWordBoundaries ?
 		m_context.abiFunctions().tupleEncoderReversed(_givenTypes, _targetTypes, _encodeAsLibraryTypes) :
@@ -595,9 +621,11 @@ void CompilerUtils::abiEncodeV2(
 void CompilerUtils::abiDecodeV2(TypePointers const& _parameterTypes, bool _fromMemory)
 {
 	// stack: <source_offset> <length> [stack top]
+	m_context.appendDebugInfo("CompilerUtils::abiDecodeV2() stack[<source_offset> <length>] top");
 	m_context << Instruction::DUP2 << Instruction::ADD;
 	m_context << Instruction::SWAP1;
 	// stack: <end> <start>
+	m_context.appendDebugInfo("CompilerUtils::abiDecodeV2() stack[<end> <start>] top");
 	string decoderName = m_context.abiFunctions().tupleDecoder(_parameterTypes, _fromMemory);
 	m_context.callYulFunction(decoderName, 2, sizeOnStack(_parameterTypes));
 }
@@ -699,6 +727,7 @@ void CompilerUtils::splitExternalFunctionType(bool _leftAligned)
 void CompilerUtils::combineExternalFunctionType(bool _leftAligned)
 {
 	// <address> <function_id>
+	m_context.appendDebugInfo("CompilerUtils::combineExternalFunctionType(leftAligned=" + to_string(_leftAligned) + ")");
 	m_context << u256(0xffffffffUL) << Instruction::AND << Instruction::SWAP1;
 	if (!_leftAligned)
 		m_context << ((u256(1) << 168) - 1)  << Instruction::AND;  // Solidity++: 168-bit address
@@ -706,6 +735,7 @@ void CompilerUtils::combineExternalFunctionType(bool _leftAligned)
 	m_context << Instruction::OR;
 	if (_leftAligned)
 		leftShiftNumberOnStack(64);
+	m_context.appendDebugInfo("end of CompilerUtils::combineExternalFunctionType()");
 }
 
 void CompilerUtils::pushCombinedFunctionEntryLabel(Declaration const& _function, bool _runtimeOnly)
@@ -737,6 +767,9 @@ void CompilerUtils::convertType(
 
 	if (_typeOnStack == _targetType && !_cleanupNeeded)
 		return;
+
+    m_context.appendDebugInfo("CompilerUtils::convertType(): " + _typeOnStack.toString(false) + " -> " + _targetType.toString(false));
+
 	Type::Category stackTypeCategory = _typeOnStack.category();
 	Type::Category targetTypeCategory = _targetType.category();
 
@@ -1214,7 +1247,7 @@ void CompilerUtils::convertType(
 				<< Instruction::AND;
 		break;
 	}
-
+    m_context.appendDebugInfo("end of CompilerUtils::convertType()");
 	solAssert(!enumOverflowCheckPending, "enum overflow checking missing.");
 	solAssert(!chopSignBitsPending, "forgot to chop the sign bits.");
 }
@@ -1303,6 +1336,7 @@ void CompilerUtils::pushZeroValue(Type const& _type)
 
 void CompilerUtils::pushZeroPointer()
 {
+    m_context.appendDebugInfo("CompilerUtils::pushZeroPointer()");
 	m_context << u256(zeroPointer);
 }
 
@@ -1310,7 +1344,8 @@ void CompilerUtils::moveToStackVariable(VariableDeclaration const& _variable)
 {
 	unsigned const stackPosition = m_context.baseToCurrentStackOffset(m_context.baseStackOffsetOfVariable(_variable));
 	unsigned const size = _variable.annotation().type->sizeOnStack();
-	solAssert(stackPosition >= size, "Variable size and position mismatch.");
+	solAssert(stackPosition >= size, "Variable size and position mismatch: stackPosition=" + to_string(stackPosition) + ", size=" +
+            to_string(size));
 	// move variable starting from its top end in the stack
 	if (stackPosition - size + 1 > 16)
 		BOOST_THROW_EXCEPTION(
@@ -1318,6 +1353,7 @@ void CompilerUtils::moveToStackVariable(VariableDeclaration const& _variable)
 			errinfo_sourceLocation(_variable.location()) <<
 			util::errinfo_comment("Stack too deep, try removing local variables.")
 		);
+	m_context.appendDebugInfo("CompilerUtils::moveToStackVariable(" + _variable.toString() + ")");
 	for (unsigned i = 0; i < size; ++i)
 		m_context << swapInstruction(stackPosition - size + 1) << Instruction::POP;
 }
@@ -1329,17 +1365,20 @@ void CompilerUtils::copyToStackTop(unsigned _stackDepth, unsigned _itemSize)
 		StackTooDeepError,
 		"Stack too deep, try removing local variables."
 	);
+	m_context.appendDebugInfo("CompilerUtils::copyToStackTop(" + to_string(_stackDepth) + ", " + to_string(_itemSize) + ")");
 	for (unsigned i = 0; i < _itemSize; ++i)
 		m_context << dupInstruction(_stackDepth);
 }
 
 void CompilerUtils::moveToStackTop(unsigned _stackDepth, unsigned _itemSize)
 {
+    m_context.appendDebugInfo("CompilerUtils::moveToStackTop(" + to_string(_stackDepth) + ", " + to_string(_itemSize) + ")");
 	moveIntoStack(_itemSize, _stackDepth);
 }
 
 void CompilerUtils::moveIntoStack(unsigned _stackDepth, unsigned _itemSize)
 {
+    m_context.appendDebugInfo("CompilerUtils::moveIntoStack(" + to_string(_stackDepth) + ", " + to_string(_itemSize) + ")");
 	if (_stackDepth <= _itemSize)
 		for (unsigned i = 0; i < _stackDepth; ++i)
 			rotateStackDown(_stackDepth + _itemSize);
@@ -1355,8 +1394,10 @@ void CompilerUtils::rotateStackUp(unsigned _items)
 		StackTooDeepError,
 		"Stack too deep, try removing local variables."
 	);
+	m_context.appendDebugInfo("CompilerUtils::rotateStackUp(" + to_string(_items) + ")");
 	for (unsigned i = 1; i < _items; ++i)
 		m_context << swapInstruction(_items - i);
+    m_context.appendDebugInfo("end of CompilerUtils::rotateStackUp()");
 }
 
 void CompilerUtils::rotateStackDown(unsigned _items)
@@ -1366,8 +1407,10 @@ void CompilerUtils::rotateStackDown(unsigned _items)
 		StackTooDeepError,
 		"Stack too deep, try removing local variables."
 	);
+    m_context.appendDebugInfo("CompilerUtils::rotateStackDown(" + to_string(_items) + ")");
 	for (unsigned i = 1; i < _items; ++i)
 		m_context << swapInstruction(i);
+    m_context.appendDebugInfo("end of CompilerUtils::rotateStackDown()");
 }
 
 void CompilerUtils::popStackElement(Type const& _type)
@@ -1377,17 +1420,21 @@ void CompilerUtils::popStackElement(Type const& _type)
 
 void CompilerUtils::popStackSlots(size_t _amount)
 {
+    m_context.appendDebugInfo("CompilerUtils::popStackSlots(" + to_string(_amount) + ")");
 	for (size_t i = 0; i < _amount; ++i)
 		m_context << Instruction::POP;
+    m_context.appendDebugInfo("end of CompilerUtils::popStackSlots()");
 }
 
 void CompilerUtils::popAndJump(unsigned _toHeight, evmasm::AssemblyItem const& _jumpTo)
 {
 	solAssert(m_context.stackHeight() >= _toHeight, "");
+    m_context.appendDebugInfo("CompilerUtils::popAndJump(toHeight=" + to_string(_toHeight) + ", jumpTo=" + _jumpTo.toAssemblyText(m_context.assembly()) + ")");
 	unsigned amount = m_context.stackHeight() - _toHeight;
 	popStackSlots(amount);
 	m_context.appendJumpTo(_jumpTo);
 	m_context.adjustStackOffset(static_cast<int>(amount));
+    m_context.appendDebugInfo("end of CompilerUtils::popAndJump()");
 }
 
 unsigned CompilerUtils::sizeOnStack(vector<Type const*> const& _variableTypes)
@@ -1401,11 +1448,12 @@ unsigned CompilerUtils::sizeOnStack(vector<Type const*> const& _variableTypes)
 void CompilerUtils::computeHashStatic()
 {
 	storeInMemory(0);
-	m_context << u256(32) << u256(0) << Instruction::KECCAK256;
+	m_context << u256(32) << u256(0) << Instruction::BLAKE2B;
 }
 
 void CompilerUtils::copyContractCodeToMemory(ContractDefinition const& contract, bool _creation)
 {
+    m_context.appendDebugInfo("CompilerUtils::copyContractCodeToMemory()");
 	string which = _creation ? "Creation" : "Runtime";
 	m_context.callLowLevelFunction(
 		"$copyContract" + which + "CodeToMemory_" + contract.type()->identifier(),
@@ -1431,6 +1479,7 @@ void CompilerUtils::storeStringData(bytesConstRef _data)
 {
 	//@todo provide both alternatives to the optimiser
 	// stack: mempos
+	m_context.appendDebugInfo("CompilerUtils::storeStringData()");
 	if (_data.size() <= 32)
 	{
 		for (unsigned i = 0; i < _data.size(); i += 32)
@@ -1452,7 +1501,7 @@ void CompilerUtils::storeStringData(bytesConstRef _data)
 unsigned CompilerUtils::loadFromMemoryHelper(Type const& _type, bool _fromCalldata, bool _padToWords)
 {
 	solAssert(_type.isValueType(), "");
-
+	m_context.appendDebugInfo("CompilerUtils::loadFromMemoryHelper()");
 	unsigned numBytes = _type.calldataEncodedSize(_padToWords);
 	bool isExternalFunctionType = false;
 	if (auto const* funType = dynamic_cast<FunctionType const*>(&_type))
@@ -1502,20 +1551,24 @@ void CompilerUtils::cleanHigherOrderBits(IntegerType const& _typeOnStack)
 void CompilerUtils::leftShiftNumberOnStack(unsigned _bits)
 {
 	solAssert(_bits < 256, "");
+	m_context.appendDebugInfo("CompilerUtils::leftShiftNumberOnStack(bits=" + to_string(_bits) + ")");
 	if (m_context.evmVersion().hasBitwiseShifting())
 		m_context << _bits << Instruction::SHL;
 	else
 		m_context << (u256(1) << _bits) << Instruction::MUL;
+    m_context.appendDebugInfo("end of CompilerUtils::leftShiftNumberOnStack()");
 }
 
 void CompilerUtils::rightShiftNumberOnStack(unsigned _bits)
 {
 	solAssert(_bits < 256, "");
+    m_context.appendDebugInfo("CompilerUtils::rightShiftNumberOnStack(bits=" + to_string(_bits) + ")");
 	// NOTE: If we add signed right shift, SAR rounds differently than SDIV
 	if (m_context.evmVersion().hasBitwiseShifting())
 		m_context << _bits << Instruction::SHR;
 	else
 		m_context << (u256(1) << _bits) << Instruction::SWAP1 << Instruction::DIV;
+    m_context.appendDebugInfo("end of CompilerUtils::rightShiftNumberOnStack()");
 }
 
 unsigned CompilerUtils::prepareMemoryStore(Type const& _type, bool _padToWords, bool _cleanup)
@@ -1528,6 +1581,8 @@ unsigned CompilerUtils::prepareMemoryStore(Type const& _type, bool _padToWords, 
 	solAssert(!_type.isDynamicallyEncoded(), "");
 
 	unsigned numBytes = _type.calldataEncodedSize(_padToWords);
+
+	m_context.appendDebugInfo("CompilerUtils::prepareMemoryStore(type=" + _type.toString(false) + ", ...)");
 
 	solAssert(
 		numBytes > 0,
@@ -1548,5 +1603,14 @@ unsigned CompilerUtils::prepareMemoryStore(Type const& _type, bool _padToWords, 
 		// shift the value accordingly before storing
 		leftShiftNumberOnStack((32 - numBytes) * 8);
 
+    m_context.appendDebugInfo("end of CompilerUtils::prepareMemoryStore()");
 	return numBytes;
+}
+
+unsigned CompilerUtils::sizeOnCalldata(const TypePointers _types)
+{
+    unsigned size = 0;
+    for(auto t : _types)
+        size += t->calldataHeadSize();
+    return size;
 }

@@ -21,11 +21,12 @@ namespace solidity::frontend {
 class Compiler
 {
 public:
-	Compiler(langutil::EVMVersion _evmVersion, RevertStrings _revertStrings, OptimiserSettings _optimiserSettings):
+	Compiler(langutil::EVMVersion _evmVersion, RevertStrings _revertStrings, OptimiserSettings _optimiserSettings, bool _verbose = false):
 		m_optimiserSettings(std::move(_optimiserSettings)),
-		m_runtimeContext(_evmVersion, _revertStrings),
-		m_context(_evmVersion, _revertStrings, &m_runtimeContext),
-		m_offchainContext(_evmVersion, _revertStrings)
+		m_runtimeContext(_evmVersion, _revertStrings, nullptr, _verbose),
+		m_context(_evmVersion, _revertStrings, &m_runtimeContext, _verbose),
+		m_offchainContext(_evmVersion, _revertStrings),
+		m_verbose(_verbose)
 	{ }
 
 	/// Solidity++: compile Vite contract (without metadata)
@@ -66,6 +67,9 @@ public:
 	/// UndefinedItem if it does not exist yet.
 	evmasm::AssemblyItem functionEntryLabel(FunctionDefinition const& _function) const;
 
+	/// Solidity++: output debug info in verbose mode
+	void debug(std::string info) const { if (m_verbose) std::clog << "    [Compiler] " << info << std::endl; }
+
 private:
 	OptimiserSettings const m_optimiserSettings;
 	CompilerContext m_runtimeContext;
@@ -73,6 +77,9 @@ private:
 	CompilerContext m_context;
 	// Solidity++: offchain compiler context
 	CompilerContext m_offchainContext;
+	// Solidity++:
+	bool m_verbose = false;
+
 };
 
 }

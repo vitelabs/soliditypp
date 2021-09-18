@@ -1019,6 +1019,9 @@ public:
 
 	VariableDeclarationAnnotation& annotation() const override;
 
+	// Solidity++:
+	std::string toString() const;
+
 protected:
 	Visibility defaultVisibility() const override { return Visibility::Internal; }
 
@@ -1769,7 +1772,6 @@ private:
     ASTPointer<Expression> m_expression;
 };
 
-
 /**
  * Definition of one or more variables as a statement inside a function.
  * If multiple variables are declared, a value has to be assigned directly.
@@ -2087,6 +2089,28 @@ public:
 
 private:
 	ASTPointer<TypeName> m_typeName;
+};
+
+/**
+ * Solidity++:
+ * The await expression is used to wait for an asynchronous message call to return: await foo(arg1, ..., argn)
+ */
+class AwaitExpression: public Expression
+{
+public:
+    AwaitExpression(
+            int64_t _id,
+            SourceLocation const& _location,
+            ASTPointer<Expression> _expression
+    ):
+            Expression(_id, _location), m_expression(std::move(_expression)) {}
+    void accept(ASTVisitor& _visitor) override;
+    void accept(ASTConstVisitor& _visitor) const override;
+
+    Expression const& expression() const { return *m_expression; }
+
+private:
+    ASTPointer<Expression> m_expression;
 };
 
 /**

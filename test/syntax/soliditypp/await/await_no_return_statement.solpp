@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma soliditypp >=0.4.2;
+
+contract Callee {
+    function f(uint a) external async pure returns(uint x) {
+        x = a + 1;
+    }
+}
+
+contract Caller {
+    Callee callee;
+    uint public data;
+
+    constructor(address addr) {
+        callee = Callee(addr);
+    }
+
+    function test() external async {
+        data = await callee.f(1);
+    }
+}
+// ----

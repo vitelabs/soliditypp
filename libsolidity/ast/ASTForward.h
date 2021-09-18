@@ -81,6 +81,7 @@ class Identifier;
 class ElementaryTypeNameExpression;
 class Literal;
 class StructuredDocumentation;
+class AwaitExpression;  // Solidity++
 
 class VariableScope;
 

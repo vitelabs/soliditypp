@@ -744,6 +744,15 @@ string VariableDeclaration::externalIdentifierHex() const
 	return TypeProvider::function(*this)->externalIdentifierHex();
 }
 
+// Solidity++:
+string VariableDeclaration::toString() const
+{
+    auto name = this->name();
+    auto type = this->type()->toString();
+    auto varString = type + " " + name;
+    return varString;
+}
+
 TypePointer VariableDeclaration::type() const
 {
 	return annotation().type;

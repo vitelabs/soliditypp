@@ -492,6 +492,20 @@ FunctionType const* TypeProvider::function(
 	);
 }
 
+// Solidity++:
+FunctionType const* TypeProvider::callbackFromFunctionCall(
+        FunctionType const* callType
+)
+{
+    callType->returnParameterTypes();
+    return createAndGet<FunctionType>(
+            callType->returnParameterTypes(),
+            TypePointers{},
+            callType->returnParameterNames(),
+            strings{}
+    );
+}
+
 RationalNumberType const* TypeProvider::rationalNumber(rational const& _value, Type const* _compatibleBytesType)
 {
 	return createAndGet<RationalNumberType>(_value, _compatibleBytesType);

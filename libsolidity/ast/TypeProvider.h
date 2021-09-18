@@ -165,6 +165,13 @@ public:
 		bool _saltSet = false
 	);
 
+	/// Solidity++: get callback function type of an asynchronous function call
+	/// @param callType the asynchronous function call type
+	/// @returns function type of the callback of the function call
+    static FunctionType const* callbackFromFunctionCall(
+        FunctionType const* callType
+    );
+
 	/// Auto-detect the proper type for a literal. @returns an empty pointer if the literal does
 	/// not fit any type.
 	static TypePointer forLiteral(Literal const& _literal);

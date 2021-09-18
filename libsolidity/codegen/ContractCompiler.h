@@ -29,11 +29,14 @@ public:
 	explicit ContractCompiler(
 		ContractCompiler* _runtimeCompiler,
 		CompilerContext& _context,
-		OptimiserSettings _optimiserSettings
+		OptimiserSettings _optimiserSettings,
+		bool _verbose = false
 	):
 		m_optimiserSettings(std::move(_optimiserSettings)),
 		m_runtimeCompiler(_runtimeCompiler),
-		m_context(_context)
+		m_context(_context),
+		m_functionSelectorTag(_context.newTag("function selector")),
+		m_verbose(_verbose)
 	{
 	}
 
@@ -54,6 +57,9 @@ public:
 		ContractDefinition const& _contract,
 		std::map<ContractDefinition const*, std::shared_ptr<Compiler const>> const& _otherCompilers
 	);
+
+	/// Solidity++: output debug info in verbose mode
+	void debug(std::string info) const { if (m_verbose) std::clog << "        [ContractCompiler] " << info << std::endl; }
 
 private:
 	/// Registers the non-function objects inside the contract with the context and stores the basic
@@ -89,7 +95,7 @@ private:
 	);
 	void appendFunctionSelector(ContractDefinition const& _contract, bool _isOffchain = false);
 	void appendCallValueCheck();
-	void appendReturnValuePacker(TypePointers const& _typeParameters, bool _isLibrary);
+	void appendReturnValuePacker(FunctionTypePointer const& _functionType, bool _isLibrary);
 
 	void registerStateVariables(ContractDefinition const& _contract);
 	void registerImmutableVariables(ContractDefinition const& _contract);
@@ -155,6 +161,10 @@ private:
 
 	/// Stores the variables that were declared inside a specific scope, for each modifier depth.
 	std::map<unsigned, std::map<ASTNode const*, unsigned>> m_scopeStackHeight;
+
+	// Solidity++:
+	evmasm::AssemblyItem m_functionSelectorTag;
+	bool m_verbose = false;
 };
 
 }

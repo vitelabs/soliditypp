@@ -154,6 +154,7 @@ static string const g_strRevertStrings = "revert-strings";
 static string const g_strStorageLayout = "storage-layout";
 static string const g_strStopAfter = "stop-after";
 static string const g_strParsing = "parsing";
+static string const g_strVerbose = "verbose";  // Solidity++
 
 /// Possible arguments to for --revert-strings
 static set<string> const g_revertStringsArgs
@@ -850,10 +851,14 @@ General Information)").c_str(),
 
 	po::options_description outputOptions("Output Options");
 	outputOptions.add_options()
-		(
-			(g_argOutputDir + ",o").c_str(),
-			po::value<string>()->value_name("path"),
-			"If given, creates one file per component and contract/file at the specified directory."
+        (
+            g_strVerbose.c_str(),
+            "Turn on verbose mode, output more compiling details for debug."
+        )
+        (
+            (g_argOutputDir + ",o").c_str(),
+            po::value<string>()->value_name("path"),
+            "If given, creates one file per component and contract/file at the specified directory."
 		)
 		(
 			g_strOverwrite.c_str(),
@@ -1494,7 +1499,7 @@ bool CommandLineInterface::processInput()
 	if (m_args.count(g_argModelCheckerTimeout))
 		m_modelCheckerSettings.timeout = m_args[g_argModelCheckerTimeout].as<unsigned>();
 
-	m_compiler = make_unique<CompilerStack>(fileReader);
+	m_compiler = make_unique<CompilerStack>(fileReader, m_args.count(g_strVerbose));  // Solidity++: verbose
 
 	SourceReferenceFormatter formatter(serr(false), m_coloredOutput, m_withErrorIds);
 

@@ -65,8 +65,8 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/codegen/ArrayUtils.h
 	codegen/Compiler.cpp
 	codegen/Compiler.h
-	${ORIGINAL_SOURCE_DIR}/codegen/CompilerContext.cpp
-	${ORIGINAL_SOURCE_DIR}/codegen/CompilerContext.h
+	codegen/CompilerContext.cpp
+	codegen/CompilerContext.h
 	codegen/CompilerUtils.cpp
 	codegen/CompilerUtils.h
 	codegen/ContractCompiler.cpp

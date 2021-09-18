@@ -126,6 +126,7 @@ private:
 	bool visit(FunctionCall const& _functionCall) override;
 	bool visit(FunctionCallOptions const& _functionCallOptions) override;
 	void endVisit(NewExpression const& _newExpression) override;
+    bool visit(AwaitExpression const& _awaitExpression) override;  // Solidity++
 	bool visit(MemberAccess const& _memberAccess) override;
 	bool visit(IndexAccess const& _indexAccess) override;
 	bool visit(IndexRangeAccess const& _indexRangeAccess) override;

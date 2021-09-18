@@ -149,7 +149,7 @@ bytes compileFirstExpression(
 			BOOST_REQUIRE(object.immutableReferences.empty());
 			bytes instructions = object.bytecode;
 			// debug
-			// cout << evmasm::disassemble(instructions) << endl;
+			cout << evmasm::disassemble(instructions) << endl;
 			return instructions;
 		}
 	BOOST_FAIL("No contract found in source.");
@@ -310,7 +310,7 @@ BOOST_AUTO_TEST_CASE(blake2b)
 {
 	char const* sourceCode = R"(
 		contract test {
-			function f(bytes memory data) public {
+			function f(bytes memory data) public async {
 				blake2b(data);
 			}
         }
@@ -334,7 +334,7 @@ BOOST_AUTO_TEST_CASE(blake2b)
  {
  	char const* sourceCode = R"(
  		contract test {
- 			function f() public {
+ 			function f() external async {
  	            tokenId t = msg.tokenid;
  			}
  		}
@@ -350,7 +350,7 @@ BOOST_AUTO_TEST_CASE(msg_amount)
 {
     char const* sourceCode = R"(
         contract test {
-            function f() public {
+            function f() external async {
                 uint a = msg.amount;
             }
         }
@@ -366,7 +366,7 @@ BOOST_AUTO_TEST_CASE(msg_amount)
  {
  	char const* sourceCode = R"(
  		contract test {
- 			function f(tokenId token) public {
+ 			function f(tokenId token) public async {
  				balance(token);
  			}
  		}

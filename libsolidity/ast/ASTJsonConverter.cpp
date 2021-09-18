@@ -870,7 +870,15 @@ bool ASTJsonConverter::visit(StructuredDocumentation const& _node)
 	return false;
 }
 
-
+// Solidity++:
+bool ASTJsonConverter::visit(AwaitExpression const& _node)
+{
+    std::vector<pair<string, Json::Value>> attributes = {
+            make_pair("expression", toJson(_node.expression())),
+    };
+    setJsonNode(_node, "AwaitExpression", std::move(attributes));
+    return false;
+}
 
 void ASTJsonConverter::endVisit(EventDefinition const&)
 {

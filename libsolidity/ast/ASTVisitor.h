@@ -93,6 +93,7 @@ public:
 	// Solidity++:
 	virtual bool visit(MessageDefinition& _node) { return visitNode(_node); }
 	virtual bool visit(SendStatement& _node) { return visitNode(_node); }
+    virtual bool visit(AwaitExpression& _node) { return visitNode(_node); }
 
 	virtual void endVisit(SourceUnit& _node) { endVisitNode(_node); }
 	virtual void endVisit(PragmaDirective& _node) { endVisitNode(_node); }
@@ -149,6 +150,7 @@ public:
 	// Solidity++:
 	virtual void endVisit(MessageDefinition& _node) { endVisitNode(_node); }
 	virtual void endVisit(SendStatement& _node) { endVisitNode(_node); }
+    virtual void endVisit(AwaitExpression& _node) { endVisitNode(_node); }
 
 protected:
 	/// Generic function called by default for each node, to be overridden by derived classes
@@ -227,6 +229,7 @@ public:
 	// Solidity++:
 	virtual bool visit(MessageDefinition const& _node) { return visitNode(_node); }
 	virtual bool visit(SendStatement const& _node) { return visitNode(_node); }
+    virtual bool visit(AwaitExpression const& _node) { return visitNode(_node); }
 
 
 	virtual void endVisit(SourceUnit const& _node) { endVisitNode(_node); }
@@ -284,6 +287,7 @@ public:
 	// Solidity++:
 	virtual void endVisit(MessageDefinition const& _node) { endVisitNode(_node); }
 	virtual void endVisit(SendStatement const& _node) { endVisitNode(_node); }
+	virtual void endVisit(AwaitExpression const& _node) { endVisitNode(_node); }
 
 
 protected:
