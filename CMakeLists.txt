@@ -39,7 +39,7 @@ eth_policy()
 
 
 # Figure out what compiler and system are we using
-include(EthCompilerSettings)
+include(ViteCompilerSettings)
 
 # Include utils
 include(EthUtils)
