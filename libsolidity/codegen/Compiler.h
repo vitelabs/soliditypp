@@ -32,8 +32,7 @@ public:
 	/// Solidity++: compile Vite contract (without metadata)
 	void compileViteContract(
 		ContractDefinition const& _contract,
-		std::map<ContractDefinition const*, std::shared_ptr<Compiler const>> const& _otherCompilers,
-        bytes const& _metadata
+		std::map<ContractDefinition const*, std::shared_ptr<Compiler const>> const& _otherCompilers
 	);
 
 	/// Compiles a contract.

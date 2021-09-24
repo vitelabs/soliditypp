@@ -44,15 +44,21 @@ void Compiler::compileContract(
 // Solidity++: compile Vite contract (without metadata)
 void Compiler::compileViteContract(
 	ContractDefinition const& _contract,
-	std::map<ContractDefinition const*, shared_ptr<Compiler const>> const& _otherCompilers,
-    bytes const& _metadata
+	std::map<ContractDefinition const*, shared_ptr<Compiler const>> const& _otherCompilers
 )
 {
     debug("Compiling runtime");
 	ContractCompiler runtimeCompiler(nullptr, m_runtimeContext, m_optimiserSettings, m_verbose);
 	runtimeCompiler.compileContract(_contract, _otherCompilers);
 
-	// Append metadata
+	// @todo: Append real metadata
+    // Solidity++: Append placeholder only for compatibility with the old version of Vite VM
+    bytes _metadata = {0xa1, 0x65, 'b', 'z', 'z', 'r', '0', 0x58, 0x20,
+                       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                       0x00, 0x29};
     m_runtimeContext.appendAuxiliaryData(_metadata);
 
 	// This might modify m_runtimeContext because it can access runtime functions at
