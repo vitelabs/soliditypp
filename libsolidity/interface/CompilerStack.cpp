@@ -1243,7 +1243,7 @@ void CompilerStack::compileContract(
 	shared_ptr<Compiler> compiler = make_shared<Compiler>(m_evmVersion, m_revertStrings, m_optimiserSettings, m_verbose);
 	compiledContract.compiler = compiler;
 
-	// bytes cborEncodedMetadata = createCBORMetadata(compiledContract);
+	 bytes cborEncodedMetadata = createCBORMetadata(compiledContract);
 
 	try
 	{
@@ -1252,7 +1252,7 @@ void CompilerStack::compileContract(
 		
 		// Solidity++:
 		debug("Compile Vite contract");
-		compiler->compileViteContract(_contract, _otherCompilers);
+		compiler->compileViteContract(_contract, _otherCompilers, cborEncodedMetadata);
 
 	}
 	catch(evmasm::OptimizerException const&)
