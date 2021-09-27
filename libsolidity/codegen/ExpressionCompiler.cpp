@@ -584,7 +584,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 		{
 			// Calling convention: Caller pushes return address and arguments
 			// Callee removes them and pushes return values
-            auto desc = "return of function " + function.canonicalName();
+            auto desc = "return of function " + function.toString(true);
 			evmasm::AssemblyItem returnLabel = m_context.pushNewTag(desc);
 			for (unsigned i = 0; i < arguments.size(); ++i)
 				acceptAndConvert(*arguments[i], *function.parameterTypes()[i]);
