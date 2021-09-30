@@ -96,7 +96,7 @@ void ContractCompiler::compileContract(
 	    solAssert(functionType->hasDeclaration(), "");
 	    // Add function entry for further compiling
 	    auto entry = m_context.functionEntryLabel(functionType->declaration());
-	    debug("  - " + entry.toAssemblyText(m_context.assembly()) + functionType->canonicalName());
+	    debug("  - " + entry.toAssemblyText(m_context.assembly()) + functionType->toString(true));
 	}
 
 
@@ -501,7 +501,7 @@ void ContractCompiler::appendFunctionSelector(ContractDefinition const& _contrac
 		vector<FixedHash<4>> sortedIDs;
 		for (auto const& it: interfaceFunctions)
 		{
-		    string desc = "calldata unpacker of " + it.second->canonicalName();
+		    string desc = "calldata unpacker of " + it.second->toString(true);
 		    auto tag = m_context.newTag(desc);
 			callDataUnpackerEntryPoints.emplace(it.first, tag);
 			sortedIDs.emplace_back(it.first);
@@ -596,7 +596,7 @@ void ContractCompiler::appendFunctionSelector(ContractDefinition const& _contrac
 			appendCallValueCheck();
 
 		// Return tag is used to jump out of the function.
-		auto desc = "return value packer of " + it.second->canonicalName();
+		auto desc = "return value packer of " + it.second->toString(true);
 		m_context.appendDebugInfo(desc);
 		evmasm::AssemblyItem returnTag = m_context.pushNewTag(desc);
 		debug("Push return tag " + returnTag.toAssemblyText(m_context.assembly()));

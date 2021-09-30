@@ -1243,7 +1243,7 @@ void CompilerStack::compileContract(
 	shared_ptr<Compiler> compiler = make_shared<Compiler>(m_evmVersion, m_revertStrings, m_optimiserSettings, m_verbose);
 	compiledContract.compiler = compiler;
 
-	// bytes cborEncodedMetadata = createCBORMetadata(compiledContract);
+//	 bytes cborEncodedMetadata = createCBORMetadata(compiledContract);
 
 	try
 	{

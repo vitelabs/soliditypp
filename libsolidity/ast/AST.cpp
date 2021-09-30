@@ -214,14 +214,17 @@ vector<pair<util::FixedHash<4>, FunctionTypePointer>> const& ContractDefinition:
 			if (_includeInheritedFunctions == false && contract != this)
 				continue;
 			vector<FunctionTypePointer> functions;
+			// User defined offchain functions
 			for (FunctionDefinition const* f: contract->definedFunctions())
 				if (f->isOffchain())
 					functions.push_back(TypeProvider::function(*f, FunctionType::Kind::External)); // TODO: offchain kind?
-					// Solidity++: generate offchain getter automatically for public state variables
+
+            // Solidity++: generate offchain getter automatically for public state variables
             for (VariableDeclaration const* v: contract->stateVariables())
                 if (v->isPartOfExternalInterface())
                     functions.push_back(TypeProvider::function(*v));
-			for (FunctionTypePointer const& fun: functions)
+
+            for (FunctionTypePointer const& fun: functions)
 			{
 				if (!fun->interfaceFunctionType())
 					// Fails hopefully because we already registered the error

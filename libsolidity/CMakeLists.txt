@@ -2,8 +2,8 @@ set(ORIGINAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/solidity/libsolidity)
 set(sources
 	${ORIGINAL_SOURCE_DIR}/analysis/ConstantEvaluator.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/ConstantEvaluator.h
-	${ORIGINAL_SOURCE_DIR}/analysis/ContractLevelChecker.cpp
-	${ORIGINAL_SOURCE_DIR}/analysis/ContractLevelChecker.h
+	analysis/ContractLevelChecker.cpp
+	analysis/ContractLevelChecker.h
 	${ORIGINAL_SOURCE_DIR}/analysis/ControlFlowAnalyzer.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/ControlFlowAnalyzer.h
 	${ORIGINAL_SOURCE_DIR}/analysis/ControlFlowBuilder.cpp
