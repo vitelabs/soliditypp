@@ -37,6 +37,7 @@ find_package(Threads)
 include(EthPolicy)
 eth_policy()
 
+set(PROJECT_VERSION "0.8.0")
 
 # Figure out what compiler and system are we using
 include(ViteCompilerSettings)

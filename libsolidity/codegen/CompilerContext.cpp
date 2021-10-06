@@ -343,7 +343,7 @@ CompilerContext& CompilerContext::appendPanic(util::PanicCode _code)
 		revert(0, 0x24)
 	})");
 	templ("selector", util::selectorFromSignature("Panic(uint256)").str());
-	templ("code", u256(_code).str());
+	templ("code", u256(static_cast<unsigned>(_code)).str());
 	appendInlineAssembly(templ.render());
 	return *this;
 }

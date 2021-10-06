@@ -1,0 +1,39 @@
+name: Build for Linux
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'branch'
+        required: true
+        default: main
+      tag:
+        description: 'tag prefix'
+        required: false
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Update Submodule
+      run: git submodule update --init --recursive
+
+    - name: Install Dependencies
+      run: bash ${{github.workspace}}/scripts/install_deps.sh
+
+    - name: Build
+      run: bash ${{github.workspace}}/build.sh
+
+
+
+
+    
+                    
+
+      

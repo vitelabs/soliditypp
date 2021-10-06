@@ -1,0 +1,37 @@
+name: Build for MacOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'branch'
+        required: true
+        default: main
+      tag:
+        description: 'tag prefix'
+        required: false
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-macos:
+    runs-on: macos-11
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Update Submodule
+      run: git submodule update --init --recursive
+
+    - name: Install Dependencies
+      run: |
+        bash ${{github.workspace}}/scripts/osx_install_dependencies.sh
+
+    - name: Build
+      run: |
+        mkdir -p build/
+        echo -n > prerelease.txt
+        cd build/
+        cmake .. -DCMAKE_BUILD_TYPE=Release
+        make -j3
