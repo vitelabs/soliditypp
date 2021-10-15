@@ -40,6 +40,8 @@ docs/utils/*.pyc
 deps/install
 deps/cache
 cmake-build-*/
+upload/
+soljson.js
 
 # vim stuff
 [._]*.sw[a-p]
