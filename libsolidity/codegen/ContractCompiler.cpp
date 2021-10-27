@@ -195,8 +195,8 @@ void ContractCompiler::appendInitAndConstructorCode(ContractDefinition const& _c
 		appendConstructor(*constructor);
 	else
 	{
-		// Implicit constructors are always non-payable.
-		appendCallValueCheck();
+		// Solidity++: Implicit constructors are always payable.
+//		appendCallValueCheck();
 		if (auto c = _contract.nextConstructor(m_context.mostDerivedContract()))
 			appendBaseConstructor(*c);
 	}
@@ -471,12 +471,13 @@ void ContractCompiler::appendFunctionSelector(ContractDefinition const& _contrac
 	FunctionDefinition const* etherReceiver = _contract.receiveFunction();
 	solAssert(!_contract.isLibrary() || !etherReceiver, "Libraries can't have ether receiver functions");
 
-	bool needToAddCallvalueCheck = true;
-	if (!hasPayableFunctions(_contract) && !interfaceFunctions.empty() && !_contract.isLibrary())
-	{
-		appendCallValueCheck();
-		needToAddCallvalueCheck = false;
-	}
+	// Solidity++: Do not check callvalue by default
+	bool needToAddCallvalueCheck = false;
+//	if (!hasPayableFunctions(_contract) && !interfaceFunctions.empty() && !_contract.isLibrary())
+//	{
+//		appendCallValueCheck();
+//		needToAddCallvalueCheck = false;
+//	}
 
 	evmasm::AssemblyItem notFoundOrReceiveEther = m_context.newTag("notFoundOrReceiveEther");
 	debug("Tag of notFoundOrReceiveEther is " + notFoundOrReceiveEther.toAssemblyText(m_context.assembly()));
@@ -523,10 +524,11 @@ void ContractCompiler::appendFunctionSelector(ContractDefinition const& _contrac
 		appendInternalSelector(callDataUnpackerEntryPoints, sortedIDs, notFound, m_optimiserSettings.expectedExecutionsPerDeployment);
 	}
 
+	// Default code for an unrecognized call
 	m_context << notFoundOrReceiveEther;
 
 	if (!fallback && !etherReceiver)
-		m_context.appendRevert("Contract does not have fallback nor receive functions");
+        m_context << Instruction::STOP;  // Solidity++: Receive the token sent by default, rather than reverting the call.
 	else
 	{
 		if (etherReceiver)
