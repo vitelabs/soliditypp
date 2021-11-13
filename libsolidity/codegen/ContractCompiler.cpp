@@ -101,8 +101,11 @@ void ContractCompiler::compileContract(
 
 
 	// Solidity++: Will append function selector after compiling await expressions
-	debug("Jump to function selector " + m_functionSelectorTag.toAssemblyText(m_context.assembly()));
-	m_context.appendJumpTo(m_functionSelectorTag);
+	if (!_contract.isLibrary())  // Solidity++: Libraries don't have function selectors
+	{
+	    debug("Jump to function selector " + m_functionSelectorTag.toAssemblyText(m_context.assembly()));
+	    m_context.appendJumpTo(m_functionSelectorTag);
+	}
 
 	debug("Compiled.");
 }
@@ -220,10 +223,9 @@ size_t ContractCompiler::packIntoContractCreator(ContractDefinition const& _cont
 
 	m_runtimeCompiler->appendMissingFunctions();
 	m_runtimeCompiler->appendFunctionSelector(_contract);
-	// Solidity++: Moved from appendMissingFunctions()
-	m_runtimeCompiler->m_context.appendYulUtilityFunctions(m_optimiserSettings);
 
 	// Solidity++: Moved from appendMissingFunctions()
+	m_runtimeCompiler->m_context.appendYulUtilityFunctions(m_optimiserSettings);
 	m_context.appendYulUtilityFunctions(m_optimiserSettings);
 
 	CompilerContext::LocationSetter locationSetter(m_context, _contract);
@@ -265,6 +267,10 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 
 	appendMissingFunctions();
 	m_runtimeCompiler->appendMissingFunctions();
+
+	// Solidity++: Moved from appendMissingFunctions()
+	m_runtimeCompiler->m_context.appendYulUtilityFunctions(m_optimiserSettings);
+	m_context.appendYulUtilityFunctions(m_optimiserSettings);
 
 	CompilerContext::LocationSetter locationSetter(m_context, _contract);
 
@@ -459,7 +465,7 @@ void ContractCompiler::appendFunctionSelector(ContractDefinition const& _contrac
 		solAssert(m_context.stackHeight() == 1, "CALL / DELEGATECALL flag expected.");
 	}
 
-	if (!_isOffchain)
+	if (!_isOffchain && !_contract.isLibrary())  // Solidity++: Libraries don't have function selectors
 	{
 	    debug("Append function selector " + m_functionSelectorTag.toAssemblyText(m_context.assembly()));
 	    m_context << m_functionSelectorTag;
