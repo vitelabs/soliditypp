@@ -242,16 +242,18 @@ unsigned CompilerContext::numberOfLocalVariables() const
 }
 
 // Solidity++:
-void CompilerContext::startAwaitCallback(AwaitExpression const& _awaitExpression)
+void CompilerContext::addCallbackDest(uint32_t const _callbackId)
 {
-    auto tag = m_awaitCallbacks.find(&_awaitExpression);
+    auto tag = m_awaitCallbacks.find(_callbackId);
     if (tag == m_awaitCallbacks.end())
     {
-        auto text = _awaitExpression.location().text() + " [id=" + to_string(_awaitExpression.id()) + "]";
+        auto text = "callback dest of " + to_string(_callbackId);
         evmasm::AssemblyItem callbackTag(newTag(text));
-        m_awaitCallbacks.insert(make_pair(&_awaitExpression, callbackTag));
+        m_awaitCallbacks.insert(make_pair(_callbackId, callbackTag));
         debug("Add tag for await: " + callbackTag.toAssemblyText(*m_asm));
         *this << callbackTag;
+        // restore context
+        *this << Instruction::CALLBACKDEST;
     }
 }
 

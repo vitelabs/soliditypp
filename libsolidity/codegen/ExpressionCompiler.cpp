@@ -2136,48 +2136,18 @@ bool ExpressionCompiler::visit(AwaitExpression const& _awaitExpression)
     CompilerContext::LocationSetter locationSetter(m_context, _awaitExpression);
 
     _awaitExpression.expression().accept(*this);
-
-    auto stackHeight = m_context.stackHeight();
-
-    // Halt the execution after await expression and return nothing
-    m_context << Instruction::STOP;
-
     auto call = dynamic_cast<FunctionCall const*>(&_awaitExpression.expression());
     auto callType = dynamic_cast<FunctionType const *>(call->expression().annotation().type);
     solAssert(callType, "fail to convert function call: " + callType->toString(false));
 
-    // Set callback entry to the continuation code.
-    m_context.startAwaitCallback(_awaitExpression);
-
-    // Load context from calldata of callback
-    // callback calldata layout: [callback_id, return_params, context]
-    unsigned offset = CompilerUtils::dataStartOffset + utils().sizeOnCalldata(callType->returnParameterTypes());
-
-    m_context << offset;
-    // stack: [offset] top
-    auto tagLoadContext = m_context.newTag("load context");
-    m_context << tagLoadContext;
-    utils().loadFromMemoryDynamic(*TypeProvider::uint256(), true);
-    // stack: [context..., offset_new] top
-    // while (offset_new < calldata_size)
-    m_context << Instruction::DUP1 << Instruction::CALLDATASIZE << Instruction::GT;
-    m_context.appendConditionalJumpTo(tagLoadContext);  // continue
-    // stack: [context..., context_n, offset_new] top
-    m_context << Instruction::POP;
-    // stack: [context..., context_n] top
-
-    // Load return values from calldata
+    // Unpack return values from calldata
     if (!callType->returnParameterTypes().empty())
     {
         m_context << CompilerUtils::dataStartOffset;
         m_context << Instruction::DUP1 << Instruction::CALLDATASIZE << Instruction::SUB;
-        // stack: [context..., context_n, return_offset, return_size] top
-        CompilerUtils(m_context).abiDecode(callType->returnParameterTypes());
-        // stack: [context..., context_n, return_1..., return_n] top
-    }
 
-    // resume the stack deposit as if it is never interrupted
-    m_context.setStackOffset((int)stackHeight);
+        CompilerUtils(m_context).abiDecode(callType->returnParameterTypes());
+    }
 
     return false;
 }
@@ -2626,8 +2596,6 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// 	}
 	// }
 
-	// Copy function identifier to memory.
-	m_context.appendDebugInfo("copy function identifier to memory.");
 	utils().fetchFreeMemoryPointer();
 	if (!_functionType.isBareCall())
 	{
@@ -2653,30 +2621,6 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		encodeInPlace,
 		encodeForLibraryCall
 	);
-
-    // Solidity++: copy callback selector and context to memory
-    if(!!_callbackSelector)
-    {
-        m_context.appendDebugInfo("push callback selector: " + toHex(_callbackSelector, HexPrefix::Add));
-        m_context << _callbackSelector;
-        utils().storeInMemoryDynamic(IntegerType(32), false);  // will update memory pointer
-        // stack: [context_1, ..., context_n, address, function_id, (token), (amount), input_memory_end] top
-        unsigned contextOffset = (_functionType.valueSet() ? 2 : 0) + 3;
-        unsigned contextSize = m_context.stackHeight() - contextOffset;
-        // @todo: improve context packing
-        solAssert(contextSize >= 0 && contextSize < 12, "Bad context size: " + to_string(contextSize));
-
-        for(unsigned i = 1; i <= contextSize; i++) {
-            // fetch the i-th item of context
-            auto depth = contextOffset + contextSize + 1 - i;
-            m_context << dupInstruction(depth);
-            // stack: [context_1, ..., context_n, address, function_id, (token), (amount), input_memory_end, context_i] top
-
-            // append item_i of context to memory
-            utils().storeInMemoryDynamic(IntegerType(256));
-            // stack: [context_1, ..., context_n, address, function_id, (token), (amount), new_input_memory_end] top
-        }
-    }
 
 	// Solidity++:
 	// Stack now: [address, function_id, (token), (amount), input_memory_end] top
@@ -2739,6 +2683,12 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	m_context.appendDebugInfo("contract address");
 	m_context << dupInstruction(m_context.baseToCurrentStackOffset(contractStackPos));
 
+	if(!!_callbackSelector)
+	{
+	    m_context.appendDebugInfo("callback id");
+	    m_context << _callbackSelector;
+	}
+
 
 	// Solidity++: disable contract existence checking
 
@@ -2776,6 +2726,11 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		m_context << Instruction::DELEGATECALL;
 	else if (useStaticCall)
 		m_context << Instruction::STATICCALL;
+	else if (!!_callbackSelector)
+	{
+	    m_context << Instruction::SYNCCALL;
+	    m_context.addCallbackDest(_callbackSelector);
+	}
 	else
 		m_context << Instruction::CALL;
 
@@ -2833,48 +2788,14 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		m_context << Instruction::SUB << Instruction::MLOAD;
 	}
 
-	// Solidity++: no real return data, but need placeholder
-	for(auto returnType : _functionType.returnParameterTypes()) {
-	    utils().pushZeroValue(*returnType);  // just a placeholder, do not use it
+	// Solidity++: no real return data, but need placeholder in async call (call external function without await operator)
+	// r = a.f();  // r will be set to zero value of return type of f().
+	if (!_callbackSelector)
+	{
+	    for(auto returnType : _functionType.returnParameterTypes()) {
+	        utils().pushZeroValue(*returnType);  // just a placeholder, do not use it
+	    }
 	}
-
-	// else if (!returnTypes.empty())
-	// {
-	// 	utils().fetchFreeMemoryPointer();
-	// 	// Stack: return_data_start
-
-	// 	// The old decoder did not allocate any memory (i.e. did not touch the free
-	// 	// memory pointer), but kept references to the return data for
-	// 	// (statically-sized) arrays
-	// 	bool needToUpdateFreeMemoryPtr = false;
-	// 	if (dynamicReturnSize || m_context.useABICoderV2())
-	// 		needToUpdateFreeMemoryPtr = true;
-	// 	else
-	// 		for (auto const& retType: returnTypes)
-	// 			if (dynamic_cast<ReferenceType const*>(retType))
-	// 				needToUpdateFreeMemoryPtr = true;
-
-	// 	// Stack: return_data_start
-	// 	if (dynamicReturnSize)
-	// 	{
-	// 		solAssert(haveReturndatacopy, "");
-	// 		m_context.appendInlineAssembly("{ returndatacopy(return_data_start, 0, returndatasize()) }", {"return_data_start"});
-	// 	}
-	// 	else
-	// 		solAssert(retSize > 0, "");
-	// 	// Always use the actual return length, and not our calculated expected length, if returndatacopy is supported.
-	// 	// This ensures it can catch badly formatted input from external calls.
-	// 	m_context << (haveReturndatacopy ? evmasm::AssemblyItem(Instruction::RETURNDATASIZE) : u256(retSize));
-	// 	// Stack: return_data_start return_data_size
-	// 	if (needToUpdateFreeMemoryPtr)
-	// 		m_context.appendInlineAssembly(R"({
-	// 			// round size to the next multiple of 32
-	// 			let newMem := add(start, and(add(size, 0x1f), not(0x1f)))
-	// 			mstore(0x40, newMem)
-	// 		})", {"start", "size"});
-
-	// 	utils().abiDecode(returnTypes, true);
-	// }
 
 	if (_tryCall)
 	{

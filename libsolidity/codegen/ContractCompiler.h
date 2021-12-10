@@ -95,7 +95,7 @@ private:
 	);
 	void appendFunctionSelector(ContractDefinition const& _contract, bool _isOffchain = false);
 	void appendCallValueCheck();
-	void appendReturnValuePacker(FunctionTypePointer const& _functionType, bool _isLibrary);
+	void appendReturnValuePacker(TypePointers const& _typeParameters, bool _isLibrary);
 
 	void registerStateVariables(ContractDefinition const& _contract);
 	void registerImmutableVariables(ContractDefinition const& _contract);

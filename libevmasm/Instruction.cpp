@@ -318,6 +318,11 @@ static std::map<Instruction, InstructionInfo> const c_instructionInfo =
 
 	{ Instruction::RETURN,		{ "RETURN",			0, 2, 0, true, Tier::Zero } },
 	{ Instruction::DELEGATECALL,	{ "DELEGATECALL",	0, 6, 1, true, Tier::Special } },
+
+	// Solidity++:
+	{ Instruction::SYNCCALL,	{ "SYNCCALL",	0, 6, 0, true, Tier::Special } },
+	{ Instruction::CALLBACKDEST,	{ "CALLBACKDEST",	0, 0, 0, true, Tier::Special } },
+
 	{ Instruction::STATICCALL,	{ "STATICCALL",		0, 6, 1, true, Tier::Special } },
 	{ Instruction::CREATE2,		{ "CREATE2",		0, 4, 1, true, Tier::Special } },
 	{ Instruction::REVERT,		{ "REVERT",		0, 2, 0, true, Tier::Zero } },

@@ -184,11 +184,15 @@ enum class Instruction: uint8_t
 	SELFBALANCE,		///< get balance of the current account
 
 	CREATE = 0xf0,		///< create a new account with associated code
-	CALL,				///< message-call into an account
+	CALL,				///< Async-call into a contract. Will not return data to the caller.
 	CALLCODE,			///< message-call with another account's code only
-	RETURN,				///< halt execution returning output data
+	RETURN,				///< Halt execution returning output data. Will send a callback transaction to the caller of the sync-call.
 	DELEGATECALL,		///< like CALLCODE but keeps caller's value and sender
 	CREATE2 = 0xf5,		///< create new account with associated code at address `sha3(0xff + sender + salt + init code) % 2**160`
+
+	SYNCCALL = 0xf7,    ///< Sync-call into a contract. The callee will send a callback transaction to the caller while executing RETURN.
+	CALLBACKDEST = 0xf8,///< restore execution context for a sync-call
+
 	STATICCALL = 0xfa,	///< like CALL but disallow state modifications
 
 	REVERT = 0xfd,		///< halt execution, revert state and return output data
