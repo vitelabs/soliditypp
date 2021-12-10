@@ -59,8 +59,8 @@ set(sources
 	ast/Types.h
 	ast/TypeProvider.cpp
 	ast/TypeProvider.h
-	${ORIGINAL_SOURCE_DIR}/codegen/ABIFunctions.cpp
-	${ORIGINAL_SOURCE_DIR}/codegen/ABIFunctions.h
+	codegen/ABIFunctions.cpp
+	codegen/ABIFunctions.h
 	${ORIGINAL_SOURCE_DIR}/codegen/ArrayUtils.cpp
 	${ORIGINAL_SOURCE_DIR}/codegen/ArrayUtils.h
 	codegen/Compiler.cpp

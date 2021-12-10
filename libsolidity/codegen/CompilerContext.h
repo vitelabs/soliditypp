@@ -85,7 +85,7 @@ public:
 	unsigned numberOfLocalVariables() const;
 
 	// Solidity++:
-	void startAwaitCallback(AwaitExpression const& _awaitExpression);
+	void addCallbackDest(uint32_t const _callbackId);
 
 	void setOtherCompilers(std::map<ContractDefinition const*, std::shared_ptr<Compiler const>> const& _otherCompilers) { m_otherCompilers = _otherCompilers; }
 	std::shared_ptr<evmasm::Assembly> compiledContract(ContractDefinition const& _contract) const;
@@ -297,7 +297,7 @@ public:
 	RevertStrings revertStrings() const { return m_revertStrings; }
 
 	// Solidity++
-	std::map<AwaitExpression const*, evmasm::AssemblyItem> awaitCallbacks() const { return m_awaitCallbacks; }
+	std::map<uint32_t, evmasm::AssemblyItem> awaitCallbacks() const { return m_awaitCallbacks; }
 
 	/// Solidity++: output debug info in verbose mode
 	void debug(std::string info) const { if (m_verbose) std::clog << "            [CompilerContext] " << info << std::endl; }
@@ -374,7 +374,7 @@ private:
 	std::map<std::string, evmasm::AssemblyItem> m_lowLevelFunctions;
 
 	/// Solidity++: An index of await callback labels
-	std::map<AwaitExpression const*, evmasm::AssemblyItem> m_awaitCallbacks;
+	std::map<uint32_t, evmasm::AssemblyItem> m_awaitCallbacks;
 
 	/// Collector for yul functions.
 	MultiUseYulFunctionCollector m_yulFunctionCollector;
