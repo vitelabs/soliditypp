@@ -178,10 +178,9 @@ vector<pair<util::FixedHash<4>, FunctionTypePointer>> const& ContractDefinition:
 			for (FunctionDefinition const* f: contract->definedFunctions())
 				if (f->isPartOfExternalInterface())
 					functions.push_back(TypeProvider::function(*f, FunctionType::Kind::External));
-            // Solidity++: disable automatic getter generating for public state variables
-//			for (VariableDeclaration const* v: contract->stateVariables())
-//				if (v->isPartOfExternalInterface())
-//					functions.push_back(TypeProvider::function(*v));
+			for (VariableDeclaration const* v: contract->stateVariables())
+				if (v->isPartOfExternalInterface())
+					functions.push_back(TypeProvider::function(*v));
 			for (FunctionTypePointer const& fun: functions)
 			{
 				if (!fun->interfaceFunctionType())

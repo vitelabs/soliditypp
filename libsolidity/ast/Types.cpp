@@ -2664,6 +2664,7 @@ FunctionType::FunctionType(FunctionDefinition const& _function, Kind _kind):
 FunctionType::FunctionType(VariableDeclaration const& _varDecl):
 	m_kind(Kind::External),
 	m_stateMutability(StateMutability::View),
+	m_executionBehavior(ExecutionBehavior::Async),  // Solidity++
 	m_declaration(&_varDecl)
 {
 	auto returnType = _varDecl.annotation().type;
