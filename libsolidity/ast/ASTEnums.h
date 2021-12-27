@@ -22,24 +22,9 @@ enum class VirtualLookup { Static, Virtual, Super };
 enum class StateMutability { Pure, View, NonPayable, Payable };
 
 /// Visibility ordered from restricted to unrestricted.
-enum class Visibility { Default, Private, Internal, Public, External, Offchain };
+enum class Visibility { Default, Private, Internal, Public, External };
 
-/// Solidity++: How a function will be executed in VM, synchronous or asynchronous
-enum class ExecutionBehavior {Sync, Async};
-
-inline std::string executionBehaviorToString(ExecutionBehavior const& _executionBehavior)
-{
-    switch (_executionBehavior)
-    {
-        case ExecutionBehavior::Sync:
-            return "sync";
-        case ExecutionBehavior::Async:
-            return "async";
-        default:
-            solAssert(false, "Unknown execution behavior.");
-    }
-}
-
+enum class SourceLanguage {Solidity, Soliditypp};  // Solidity++
 
 enum class Arithmetic { Checked, Wrapping };
 

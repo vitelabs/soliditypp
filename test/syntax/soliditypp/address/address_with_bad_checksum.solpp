@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma soliditypp >=0.4.2;
+pragma soliditypp >=0.8.0;
 
 contract BadAddressChecksum {
     address a = "vite_01020304050607080908070605040302010203041222700000";

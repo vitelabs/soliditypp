@@ -2,8 +2,8 @@ set(ORIGINAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/solidity/libsolidity)
 set(sources
 	${ORIGINAL_SOURCE_DIR}/analysis/ConstantEvaluator.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/ConstantEvaluator.h
-	analysis/ContractLevelChecker.cpp
-	analysis/ContractLevelChecker.h
+	${ORIGINAL_SOURCE_DIR}/analysis/ContractLevelChecker.cpp
+	${ORIGINAL_SOURCE_DIR}/analysis/ContractLevelChecker.h
 	${ORIGINAL_SOURCE_DIR}/analysis/ControlFlowAnalyzer.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/ControlFlowAnalyzer.h
 	${ORIGINAL_SOURCE_DIR}/analysis/ControlFlowBuilder.cpp
@@ -34,25 +34,34 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/analysis/Scoper.h
 	${ORIGINAL_SOURCE_DIR}/analysis/StaticAnalyzer.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/StaticAnalyzer.h
-	analysis/SyntaxChecker.cpp
-	${ORIGINAL_SOURCE_DIR}/analysis/SyntaxChecker.h
-	analysis/TypeChecker.cpp
+	analysis/SolidityppSyntaxChecker.cpp
+	analysis/SolidityppSyntaxChecker.h
+	${ORIGINAL_SOURCE_DIR}/analysis/SyntaxChecker.cpp
+	analysis/SyntaxChecker.h
+	analysis/SolidityppTypeChecker.cpp
+	analysis/SolidityppTypeChecker.h
+	${ORIGINAL_SOURCE_DIR}/analysis/TypeChecker.cpp
 	analysis/TypeChecker.h
 	${ORIGINAL_SOURCE_DIR}/analysis/ViewPureChecker.cpp
 	${ORIGINAL_SOURCE_DIR}/analysis/ViewPureChecker.h
 	ast/AST.cpp
 	ast/AST.h
-	ast/AST_accept.h
+	ast/SolidityppAST.cpp
+	ast/SolidityppAST.h
+	${ORIGINAL_SOURCE_DIR}/ast/AST_accept.h
+	ast/SolidityppAST_accept.h
 	${ORIGINAL_SOURCE_DIR}/ast/ASTAnnotations.cpp
 	ast/ASTAnnotations.h
 	ast/ASTEnums.h
 	ast/ASTForward.h
-	ast/ASTJsonConverter.cpp
+	ast/SolidityppASTJsonConverter.cpp
+	ast/SolidityppASTJsonConverter.h
+	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonConverter.cpp
 	ast/ASTJsonConverter.h
 	${ORIGINAL_SOURCE_DIR}/ast/ASTUtils.cpp
 	${ORIGINAL_SOURCE_DIR}/ast/ASTUtils.h
-	ast/ASTJsonImporter.cpp
-	ast/ASTJsonImporter.h
+	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonImporter.cpp
+	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonImporter.h
 	ast/ASTVisitor.h
 	${ORIGINAL_SOURCE_DIR}/ast/ExperimentalFeatures.h
 	ast/Types.cpp
@@ -122,8 +131,8 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/formal/SymbolicVariables.h
 	${ORIGINAL_SOURCE_DIR}/formal/VariableUsage.cpp
 	${ORIGINAL_SOURCE_DIR}/formal/VariableUsage.h
-	interface/ABI.cpp
-	interface/ABI.h
+	${ORIGINAL_SOURCE_DIR}/interface/ABI.cpp
+	${ORIGINAL_SOURCE_DIR}/interface/ABI.h
 	interface/CompilerStack.cpp
 	interface/CompilerStack.h
 	${ORIGINAL_SOURCE_DIR}/interface/DebugSettings.h
@@ -137,8 +146,8 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/interface/StandardCompiler.h
 	${ORIGINAL_SOURCE_DIR}/interface/StorageLayout.cpp
 	${ORIGINAL_SOURCE_DIR}/interface/StorageLayout.h
-	${ORIGINAL_SOURCE_DIR}/interface/Version.cpp
-	${ORIGINAL_SOURCE_DIR}/interface/Version.h
+	interface/Version.cpp
+	interface/Version.h
 	${ORIGINAL_SOURCE_DIR}/parsing/DocStringParser.cpp
 	${ORIGINAL_SOURCE_DIR}/parsing/DocStringParser.h
 	parsing/Parser.cpp

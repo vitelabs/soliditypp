@@ -44,12 +44,6 @@ public:
 		ContractDefinition const& _contract,
 		std::map<ContractDefinition const*, std::shared_ptr<Compiler const>> const& _otherCompilers
 	);
-	
-	/// Solidity++: compile offchain functions
-	void compileOffchain(
-		ContractDefinition const& _contract,
-		std::map<ContractDefinition const*, std::shared_ptr<Compiler const>> const& _otherCompilers
-	);
 
 	/// Compiles the constructor part of the contract.
 	/// @returns the identifier of the runtime sub-assembly.
@@ -93,7 +87,7 @@ private:
 		evmasm::AssemblyItem const& _notFoundTag,
 		size_t _runs
 	);
-	void appendFunctionSelector(ContractDefinition const& _contract, bool _isOffchain = false);
+	void appendFunctionSelector(ContractDefinition const& _contract);
 	void appendCallValueCheck();
 	void appendReturnValuePacker(TypePointers const& _typeParameters, bool _isLibrary);
 
@@ -115,7 +109,6 @@ private:
 	bool visit(Return const& _return) override;
 	bool visit(Throw const& _throw) override;
 	bool visit(EmitStatement const& _emit) override;
-	bool visit(SendStatement const& _send) override;  // Solidity++
 	bool visit(VariableDeclarationStatement const& _variableDeclarationStatement) override;
 	bool visit(ExpressionStatement const& _expressionStatement) override;
 	bool visit(PlaceholderStatement const&) override;

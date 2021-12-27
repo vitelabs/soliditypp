@@ -1,6 +1,6 @@
-pragma soliditypp >=0.4.0;
+pragma soliditypp >=0.8.0;
 contract Test {
-    function test(bytes memory data) external async pure {
+    function test(bytes memory data) external pure {
 		blake2b(data);
 	}
 }

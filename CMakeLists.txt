@@ -23,7 +23,7 @@ include(ViteUtils)
 
 include(EthToolchains)
 
-option(SOLC_LINK_STATIC "Link solc executable statically on supported platforms" OFF)
+option(SOLC_LINK_STATIC "Link solc executable statically on supported platforms" ON)
 option(SOLC_STATIC_STDLIBS "Link solc against static versions of libgcc and libstdc++ on supported platforms" OFF)
 
 # Let's find our dependencies
@@ -37,7 +37,7 @@ find_package(Threads)
 include(EthPolicy)
 eth_policy()
 
-set(PROJECT_VERSION "0.8.0")
+set(PROJECT_VERSION "0.8.1")
 
 # Figure out what compiler and system are we using
 include(ViteCompilerSettings)

@@ -264,19 +264,11 @@ public:
 	/// @returns the runtime object for the contract.
 	evmasm::LinkerObject const& runtimeObject(std::string const& _contractName) const;
 
-	/// @returns the offchain object for the contract.
-	/// Solidity++: offchain linker object
-	evmasm::LinkerObject const& offchainObject(std::string const& _contractName) const;
-
 	/// @returns normal contract assembly items
 	evmasm::AssemblyItems const* assemblyItems(std::string const& _contractName) const;
 
 	/// @returns runtime contract assembly items
 	evmasm::AssemblyItems const* runtimeAssemblyItems(std::string const& _contractName) const;
-
-	/// @returns contract offchain assembly items
-	/// Solidity++: offchain assembly items
-	evmasm::AssemblyItems const* offchainAssemblyItems(std::string const& _contractName) const;
 
 	/// @returns an array containing all utility sources generated during compilation.
 	/// Format: [ { name: string, id: number, language: "Yul", contents: string }, ... ]
@@ -290,32 +282,15 @@ public:
 	/// if the contract does not (yet) have bytecode.
 	std::string const* runtimeSourceMapping(std::string const& _contractName) const;
 
-	/// @returns the string that provides a mapping between runtime bytecode and sourcecode or a nullptr
-	/// if the contract does not (yet) have bytecode.
-	/// Solidity++: offchain source mapping
-	std::string const* offchainSourceMapping(std::string const& _contractName) const;
-
 	/// @return a verbose text representation of the assembly.
 	/// @arg _sourceCodes is the map of input files to source code strings
 	/// Prerequisite: Successful compilation.
 	std::string assemblyString(std::string const& _contractName, StringMap _sourceCodes = StringMap()) const;
 
-	/// @return a verbose text representation of the assembly.
-	/// @arg _sourceCodes is the map of input files to source code strings
-	/// Prerequisite: Successful compilation.
-	/// Solidity++: get offchain assembly string
-	std::string offchainAssemblyString(std::string const& _contractName, StringMap _sourceCodes = StringMap()) const;
-
 	/// @returns a JSON representation of the assembly.
 	/// @arg _sourceCodes is the map of input files to source code strings
 	/// Prerequisite: Successful compilation.
 	Json::Value assemblyJSON(std::string const& _contractName) const;
-
-	/// @returns a JSON representation of the assembly.
-	/// @arg _sourceCodes is the map of input files to source code strings
-	/// Prerequisite: Successful compilation.
-	/// Solidity++: get offchain assembly JSON
-	Json::Value offchainAssemblyJSON(std::string const& _contractName) const;
 
 	/// @returns a JSON representing the contract ABI.
 	/// Prerequisite: Successful call to parse or compile.
@@ -369,12 +344,8 @@ private:
 		std::shared_ptr<Compiler> compiler;
 		std::shared_ptr<evmasm::Assembly> evmAssembly;
 		std::shared_ptr<evmasm::Assembly> evmRuntimeAssembly;
-		// Solidity++: offchain assembly
-		std::shared_ptr<evmasm::Assembly> offchainAssembly;
 		evmasm::LinkerObject object; ///< Deployment object (includes the runtime sub-object).
 		evmasm::LinkerObject runtimeObject; ///< Runtime object.
-
-		evmasm::LinkerObject offchainObject; /// Solidity++: Offchain object.
 
 		std::string yulIR; ///< Experimental Yul IR code.
 		std::string yulIROptimized; ///< Optimized experimental Yul IR code.

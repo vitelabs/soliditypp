@@ -80,6 +80,8 @@ struct SourceUnitAnnotation: ASTAnnotation
 	std::set<ExperimentalFeature> experimentalFeatures;
 	/// Using the new ABI coder. Set to `false` if using ABI coder v1.
 	SetOnce<bool> useABICoderV2;
+	/// Solidity++: The programing language of this source unit
+	SetOnce<SourceLanguage> sourceLanguage;
 };
 
 struct ScopableAnnotation
@@ -253,9 +255,6 @@ struct ExpressionAnnotation: ASTAnnotation
 	/// that is called, used for overload resolution
 	std::optional<FuncCallArguments> arguments;
 
-	/// Solidity++: Id of await expression, used for callback signature of a function call
-    int64_t awaitId = 0;
-
 	/// True if the expression consists solely of the name of the function and the function is called immediately
 	/// instead of being stored or processed. The name may be qualified with the name of a contract, library
 	/// module, etc., that clarifies the scope. For example: `m.L.f()`, where `m` is a module, `L` is a library
@@ -303,6 +302,8 @@ enum class FunctionCallKind
 struct FunctionCallAnnotation: ExpressionAnnotation
 {
 	util::SetOnce<FunctionCallKind> kind;
+	/// If true, this is an async call.
+	bool async = true;
 	/// If true, this is the external call of a try statement.
 	bool tryCall = false;
 };

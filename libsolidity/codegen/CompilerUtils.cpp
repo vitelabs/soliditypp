@@ -1353,7 +1353,7 @@ void CompilerUtils::moveToStackVariable(VariableDeclaration const& _variable)
 			errinfo_sourceLocation(_variable.location()) <<
 			util::errinfo_comment("Stack too deep, try removing local variables.")
 		);
-	m_context.appendDebugInfo("CompilerUtils::moveToStackVariable(" + _variable.toString() + ")");
+	m_context.appendDebugInfo("CompilerUtils::moveToStackVariable(" + _variable.name() + ")");
 	for (unsigned i = 0; i < size; ++i)
 		m_context << swapInstruction(stackPosition - size + 1) << Instruction::POP;
 }

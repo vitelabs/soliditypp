@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <libsolidity/ast/AST.h>
+#include <libsolidity/ast/SolidityppAST.h>
 
 #include <functional>
 #include <string>
@@ -91,8 +91,6 @@ public:
 	virtual bool visit(Literal& _node) { return visitNode(_node); }
 	virtual bool visit(StructuredDocumentation& _node) { return visitNode(_node); }
 	// Solidity++:
-	virtual bool visit(MessageDefinition& _node) { return visitNode(_node); }
-	virtual bool visit(SendStatement& _node) { return visitNode(_node); }
     virtual bool visit(AwaitExpression& _node) { return visitNode(_node); }
 
 	virtual void endVisit(SourceUnit& _node) { endVisitNode(_node); }
@@ -148,8 +146,6 @@ public:
 	virtual void endVisit(Literal& _node) { endVisitNode(_node); }
 	virtual void endVisit(StructuredDocumentation& _node) { endVisitNode(_node); }
 	// Solidity++:
-	virtual void endVisit(MessageDefinition& _node) { endVisitNode(_node); }
-	virtual void endVisit(SendStatement& _node) { endVisitNode(_node); }
     virtual void endVisit(AwaitExpression& _node) { endVisitNode(_node); }
 
 protected:
@@ -227,10 +223,7 @@ public:
 	virtual bool visit(Literal const& _node) { return visitNode(_node); }
 	virtual bool visit(StructuredDocumentation const& _node) { return visitNode(_node); }
 	// Solidity++:
-	virtual bool visit(MessageDefinition const& _node) { return visitNode(_node); }
-	virtual bool visit(SendStatement const& _node) { return visitNode(_node); }
     virtual bool visit(AwaitExpression const& _node) { return visitNode(_node); }
-
 
 	virtual void endVisit(SourceUnit const& _node) { endVisitNode(_node); }
 	virtual void endVisit(PragmaDirective const& _node) { endVisitNode(_node); }
@@ -285,8 +278,6 @@ public:
 	virtual void endVisit(Literal const& _node) { endVisitNode(_node); }
 	virtual void endVisit(StructuredDocumentation const& _node) { endVisitNode(_node); }
 	// Solidity++:
-	virtual void endVisit(MessageDefinition const& _node) { endVisitNode(_node); }
-	virtual void endVisit(SendStatement const& _node) { endVisitNode(_node); }
 	virtual void endVisit(AwaitExpression const& _node) { endVisitNode(_node); }
 
 

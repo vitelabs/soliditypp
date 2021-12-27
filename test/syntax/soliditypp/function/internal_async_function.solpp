@@ -1,9 +1,0 @@
-// SPDX-License-Identifier: GPL-3.0
-pragma soliditypp >=0.4.2;
-
-contract AsyncFunctionContract {
-    function f() internal async {
-    }
-}
-// ----
-TypeError 100303: (101-136): "internal" and "private" functions cannot be async.

@@ -12,7 +12,7 @@
 
 #include <libsolidity/interface/Version.h>
 #include <libsolidity/parsing/Parser.h>
-#include <libsolidity/ast/ASTJsonConverter.h>
+#include <libsolidity/ast/SolidityppASTJsonConverter.h>
 #include <libsolidity/ast/ASTJsonImporter.h>
 #include <libsolidity/analysis/NameAndTypeResolver.h>
 #include <libsolidity/interface/CompilerStack.h>
@@ -346,19 +346,6 @@ void CommandLineInterface::handleBinary(string const& _contract)
 			sout() << objectWithLinkRefsHex(m_compiler->object(_contract)) << endl;
 		}
 	}
-	// Solidity++: output offchain binary
-	// TODO: add offchain args
-	if (m_args.count(g_argBinary))
-	{
-		if (m_args.count(g_argOutputDir))
-			createFile(m_compiler->filesystemFriendlyName(_contract) + "_offchain.bin", objectWithLinkRefsHex(m_compiler->offchainObject(_contract)));
-		else
-		{
-			sout() << "OffChain Binary:" << endl;
-			sout() << objectWithLinkRefsHex(m_compiler->offchainObject(_contract)) << endl;
-		}
-	}
-
 	if (m_args.count(g_argBinaryRuntime))
 	{
 		if (m_args.count(g_argOutputDir))
@@ -1725,7 +1712,7 @@ void CommandLineInterface::handleCombinedJSON()
 		output[g_strSources] = Json::Value(Json::objectValue);
 		for (auto const& sourceCode: m_sourceCodes)
 		{
-			ASTJsonConverter converter(m_compiler->state(), m_compiler->sourceIndices());
+			SolidityppASTJsonConverter converter(m_compiler->state(), m_compiler->sourceIndices());
 			output[g_strSources][sourceCode.first] = Json::Value(Json::objectValue);
 			output[g_strSources][sourceCode.first]["AST"] = converter.toJson(m_compiler->ast(sourceCode.first));
 		}
@@ -1755,7 +1742,7 @@ void CommandLineInterface::handleAst()
 		{
 			stringstream data;
 			string postfix = "";
-			ASTJsonConverter(m_compiler->state(), m_compiler->sourceIndices()).print(data, m_compiler->ast(sourceCode.first));
+			SolidityppASTJsonConverter(m_compiler->state(), m_compiler->sourceIndices()).print(data, m_compiler->ast(sourceCode.first));
 			postfix += "_json";
 			boost::filesystem::path path(sourceCode.first);
 			createFile(path.filename().string() + postfix + ".ast", data.str());
@@ -1767,7 +1754,7 @@ void CommandLineInterface::handleAst()
 		for (auto const& sourceCode: m_sourceCodes)
 		{
 			sout() << endl << "======= " << sourceCode.first << " =======" << endl;
-			ASTJsonConverter(m_compiler->state(), m_compiler->sourceIndices()).print(sout(), m_compiler->ast(sourceCode.first));
+			SolidityppASTJsonConverter(m_compiler->state(), m_compiler->sourceIndices()).print(sout(), m_compiler->ast(sourceCode.first));
 		}
 	}
 }
@@ -2050,28 +2037,22 @@ void CommandLineInterface::outputCompilationResults()
 		if (m_args.count(g_argAsm) || m_args.count(g_argAsmJson))
 		{
 			string ret;
-			// Solidity++: offchain assembly
-			string ret_offchain;
 			if (m_args.count(g_argAsmJson))
 			{
 				ret = jsonPrettyPrint(removeNullMembers(m_compiler->assemblyJSON(contract)));
-				ret_offchain = jsonPrettyPrint(removeNullMembers(m_compiler->offchainAssemblyJSON(contract)));
 			}
 			else
 			{
 				ret = m_compiler->assemblyString(contract, m_sourceCodes);
-				ret_offchain = m_compiler->offchainAssemblyString(contract, m_sourceCodes);
 			}
 
 			if (m_args.count(g_argOutputDir))
 			{
 				createFile(m_compiler->filesystemFriendlyName(contract) + (m_args.count(g_argAsmJson) ? "_evm.json" : ".evm"), ret);
-				createFile(m_compiler->filesystemFriendlyName(contract) + (m_args.count(g_argAsmJson) ? "_evm_offchain.json" : "_offchain.evm"), ret_offchain);
 			}
 			else
 			{
 				sout() << "EVM assembly:" << endl << "=======" << endl << ret << endl;
-				sout() << "=======" << endl << "Offchain assembly:" << endl << "=======" << endl << ret_offchain << endl;
 			}
 		}
 

@@ -415,6 +415,7 @@ u256 AddressType::literalValue(Literal const* _literal) const
 {
 	solAssert(_literal, "");
 	solAssert(_literal->value().substr(0, 5) == "vite_", "Vite address must begin with vite_");
+
 	return u256(_literal->getViteAddressHex());
 }
 
@@ -477,6 +478,7 @@ u256 ViteTokenIdType::literalValue(Literal const* _literal) const
 {
 	solAssert(_literal, "");
 	solAssert(_literal->value().substr(0, 4) == "tti_", "Vite Token Id must begin with tti_");
+
 	return u256(_literal->getViteTokenIdHex());
 }
 
@@ -879,40 +881,39 @@ tuple<bool, rational> RationalNumberType::isValidLiteral(Literal const& _literal
 	{
 		return make_tuple(false, rational(0));
 	}
-	switch (_literal.subDenomination())
-	{
-		case Literal::SubDenomination::None:
-		case Literal::SubDenomination::Wei:
-		case Literal::SubDenomination::Second:
-			break;
-		case Literal::SubDenomination::Gwei:
-			value *= bigint("1000000000");
-			break;
-		case Literal::SubDenomination::Ether:
-			value *= bigint("1000000000000000000");
-			break;
-		case Literal::SubDenomination::Minute:
-			value *= bigint("60");
-			break;
-		case Literal::SubDenomination::Hour:
-			value *= bigint("3600");
-			break;
-		case Literal::SubDenomination::Day:
-			value *= bigint("86400");
-			break;
-		case Literal::SubDenomination::Week:
-			value *= bigint("604800");
-			break;
-		case Literal::SubDenomination::Year:
-			value *= bigint("31536000");
-			break;
-		case Literal::SubDenomination::Attov:
-			break;
-		case Literal::SubDenomination::Vite:
-			value *= bigint("1000000000000000000");
-			break;
-	}
 
+    switch (_literal.subDenomination())
+    {
+        case Literal::SubDenomination::None:
+        case Literal::SubDenomination::Wei:
+        case Literal::SubDenomination::Second:
+            break;
+        case Literal::SubDenomination::Gwei:
+            value *= bigint("1000000000");
+            break;
+        case Literal::SubDenomination::Ether:
+            value *= bigint("1000000000000000000");
+            break;
+        case Literal::SubDenomination::Minute:
+            value *= bigint("60");
+            break;
+        case Literal::SubDenomination::Hour:
+            value *= bigint("3600");
+            break;
+        case Literal::SubDenomination::Day:
+            value *= bigint("86400");
+            break;
+        case Literal::SubDenomination::Week:
+            value *= bigint("604800");
+            break;
+        case Literal::SubDenomination::Year:
+            value *= bigint("31536000");
+            break;
+        case Literal::SubDenomination::Attov:
+            break;
+        case Literal::SubDenomination::Vite:
+            value *= bigint("1000000000000000000");
+    }
 
 	return make_tuple(true, value);
 }
@@ -2629,7 +2630,6 @@ TypePointer TupleType::closestTemporaryType(Type const* _targetType) const
 FunctionType::FunctionType(FunctionDefinition const& _function, Kind _kind):
 	m_kind(_kind),
 	m_stateMutability(_function.stateMutability()),
-	m_executionBehavior(_function.executionBehavior()),  // Solidity++
 	m_declaration(&_function)
 {
 	solAssert(
@@ -2664,7 +2664,6 @@ FunctionType::FunctionType(FunctionDefinition const& _function, Kind _kind):
 FunctionType::FunctionType(VariableDeclaration const& _varDecl):
 	m_kind(Kind::External),
 	m_stateMutability(StateMutability::View),
-	m_executionBehavior(ExecutionBehavior::Async),  // Solidity++
 	m_declaration(&_varDecl)
 {
 	auto returnType = _varDecl.annotation().type;
@@ -2748,35 +2747,11 @@ FunctionType::FunctionType(EventDefinition const& _event):
 			);
 }
 
-// Solidity++:
-FunctionType::FunctionType(MessageDefinition const& _message):
-	m_kind(Kind::SendMessage),
-	m_stateMutability(StateMutability::Payable),
-	m_executionBehavior(ExecutionBehavior::Async),
-	m_declaration(&_message)
-{
-	for (ASTPointer<VariableDeclaration> const& var: _message.parameters())
-	{
-		m_parameterNames.push_back(var->name());
-		m_parameterTypes.push_back(var->annotation().type);
-	}
-
-	solAssert(
-			m_parameterNames.size() == m_parameterTypes.size(),
-			"Parameter names list must match parameter types list!"
-			);
-	solAssert(
-			m_returnParameterNames.size() == m_returnParameterTypes.size(),
-			"Return parameter names list must match return parameter types list!"
-			);
-}
-
 FunctionType::FunctionType(FunctionTypeName const& _typeName):
 	m_parameterNames(_typeName.parameterTypes().size(), ""),
 	m_returnParameterNames(_typeName.returnParameterTypes().size(), ""),
 	m_kind(_typeName.visibility() == Visibility::External ? Kind::External : Kind::Internal),
-	m_stateMutability(_typeName.stateMutability()),
-    m_executionBehavior(ExecutionBehavior::Async)
+	m_stateMutability(_typeName.stateMutability())
 {
 	if (_typeName.isPayable())
 		solAssert(m_kind == Kind::External, "Internal payable function type used.");
@@ -2915,7 +2890,6 @@ string FunctionType::richIdentifier() const
 	case Kind::ABIDecode: id += "abidecode"; break;
 	case Kind::MetaType: id += "metatype"; break;
 	// Solidity++:
-	case Kind::SendMessage: id += "messagecall"; break;
 	case Kind::BLAKE2B: id += "blake2b"; break;
 	case Kind::PrevHash: id += "prevhash"; break;
 	case Kind::Height: id += "height"; break;
@@ -2932,6 +2906,8 @@ string FunctionType::richIdentifier() const
 		id += "gas";
 	if (m_valueSet)
 		id += "value";
+	if (m_tokenSet)  // Solidity++
+	    id += "tti";
 	if (m_saltSet)
 		id += "salt";
 	if (bound())
@@ -3087,6 +3063,7 @@ bool FunctionType::nameable() const
 		!m_arbitraryParameters &&
 		!m_gasSet &&
 		!m_valueSet &&
+		!m_tokenSet &&
 		!m_saltSet;
 }
 
@@ -3133,6 +3110,8 @@ vector<tuple<string, TypePointer>> FunctionType::makeStackItems() const
 		slots.emplace_back("gas", TypeProvider::uint256());
 	if (m_valueSet)
 		slots.emplace_back("value", TypeProvider::uint256());
+	if (m_tokenSet)
+	    slots.emplace_back("tti", TypeProvider::viteTokenId());  // Solidity++
 	if (m_saltSet)
 		slots.emplace_back("salt", TypeProvider::fixedBytes(32));
 	if (bound())
@@ -3173,7 +3152,6 @@ FunctionTypePointer FunctionType::interfaceFunctionType() const
 		m_kind,
 		m_arbitraryParameters,
 		m_stateMutability,
-		m_executionBehavior,
 		m_declaration
 	);
 }
@@ -3229,10 +3207,10 @@ MemberList::MemberMap FunctionType::nativeMembers(ASTNode const* _scope) const
 						Kind::SetValue,
 						false,
 						StateMutability::Pure,
-						ExecutionBehavior::Sync,
 						nullptr,
 						m_gasSet,
 						m_valueSet,
+						m_tokenSet,
 						m_saltSet
 					)
 				);
@@ -3248,10 +3226,10 @@ MemberList::MemberMap FunctionType::nativeMembers(ASTNode const* _scope) const
 					Kind::SetGas,
 					false,
 					StateMutability::Pure,
-					ExecutionBehavior::Sync,
 					nullptr,
 					m_gasSet,
 					m_valueSet,
+					m_tokenSet,
 					m_saltSet
 				)
 			);
@@ -3278,7 +3256,7 @@ MemberList::MemberMap FunctionType::nativeMembers(ASTNode const* _scope) const
 
 TypePointer FunctionType::encodingType() const
 {
-	if (m_gasSet || m_valueSet)
+	if (m_gasSet || m_valueSet || m_tokenSet)
 		return nullptr;
 	// Only external functions can be encoded, internal functions cannot leave code boundaries.
 	if (m_kind == Kind::External)
@@ -3297,7 +3275,7 @@ TypeResult FunctionType::interfaceType(bool /*_inLibrary*/) const
 
 TypePointer FunctionType::mobileType() const
 {
-	if (m_valueSet || m_gasSet || m_saltSet || m_bound)
+	if (m_valueSet || m_tokenSet || m_gasSet || m_saltSet || m_bound)
 		return nullptr;
 
 	// return function without parameter names
@@ -3309,10 +3287,10 @@ TypePointer FunctionType::mobileType() const
 		m_kind,
 		m_arbitraryParameters,
 		m_stateMutability,
-		m_executionBehavior,
 		m_declaration,
 		m_gasSet,
 		m_valueSet,
+		m_tokenSet,
 		m_bound,
 		m_saltSet
 	);
@@ -3400,15 +3378,11 @@ bool FunctionType::equalExcludingStateMutability(FunctionType const& _other) con
 		return false;
 
 	//@todo this is ugly, but cannot be prevented right now
-	if (m_gasSet != _other.m_gasSet || m_valueSet != _other.m_valueSet || m_saltSet != _other.m_saltSet)
+	if (m_gasSet != _other.m_gasSet || m_valueSet != _other.m_valueSet || m_tokenSet != _other.m_tokenSet || m_saltSet != _other.m_saltSet)
 		return false;
 
 	if (bound() != _other.bound())
 		return false;
-
-    // Solidity++:
-    if(executionBehavior() != _other.executionBehavior())
-        return false;
 
 	solAssert(!bound() || *selfType() == *_other.selfType(), "");
 
@@ -3434,23 +3408,18 @@ bool FunctionType::isBareCall() const
 
 string FunctionType::externalSignature() const
 {
-//	solAssert(m_declaration != nullptr, "External signature of function needs declaration");
-//	solAssert(!m_declaration->name().empty(), "Fallback function has no signature.");
-	if (!m_declaration || m_declaration->name().empty())
-	    return "_()";
-
-    switch (kind())
+	solAssert(m_declaration != nullptr, "External signature of function needs declaration");
+	solAssert(!m_declaration->name().empty(), "Fallback function has no signature.");
+	switch (kind())
 	{
 	case Kind::Internal:
 	case Kind::External:
 	case Kind::DelegateCall:
 	case Kind::Event:
-	case Kind::SendMessage:  // Solidity++
 	case Kind::Declaration:
 		break;
 	default:
-	    return "_" + richIdentifier();
-//		solAssert(false, "Invalid function type for requesting external signature.");
+		solAssert(false, "Invalid function type for requesting external signature.");
 	}
 
 	// "inLibrary" is only relevant if this is not an event.
@@ -3514,7 +3483,7 @@ TypePointers FunctionType::parseElementaryTypeVector(strings const& _types)
 	return pointers;
 }
 
-TypePointer FunctionType::copyAndSetCallOptions(bool _setGas, bool _setValue, bool _setSalt) const
+TypePointer FunctionType::copyAndSetCallOptions(bool _setGas, bool _setValue, bool _setSalt, bool _setToken) const
 {
 	solAssert(m_kind != Kind::Declaration, "");
 	return TypeProvider::function(
@@ -3525,10 +3494,10 @@ TypePointer FunctionType::copyAndSetCallOptions(bool _setGas, bool _setValue, bo
 		m_kind,
 		m_arbitraryParameters,
 		m_stateMutability,
-		m_executionBehavior,
 		m_declaration,
 		m_gasSet || _setGas,
 		m_valueSet || _setValue,
+		m_tokenSet || _setToken,
 		m_saltSet || _setSalt,
 		m_bound
 	);
@@ -3541,6 +3510,7 @@ FunctionTypePointer FunctionType::asBoundFunction() const
 	solAssert(fun && fun->libraryFunction(), "");
 	solAssert(!m_gasSet, "");
 	solAssert(!m_valueSet, "");
+	solAssert(!m_tokenSet, "");
 	solAssert(!m_saltSet, "");
 	return TypeProvider::function(
 		m_parameterTypes,
@@ -3550,10 +3520,10 @@ FunctionTypePointer FunctionType::asBoundFunction() const
 		m_kind,
 		m_arbitraryParameters,
 		m_stateMutability,
-		m_executionBehavior,
 		m_declaration,
 		m_gasSet,
 		m_valueSet,
+		m_tokenSet,
 		m_saltSet,
 		true
 	);
@@ -3595,10 +3565,10 @@ FunctionTypePointer FunctionType::asExternallyCallableFunction(bool _inLibrary) 
 		kind,
 		m_arbitraryParameters,
 		m_stateMutability,
-		m_executionBehavior,
 		m_declaration,
 		m_gasSet,
 		m_valueSet,
+		m_tokenSet,
 		m_saltSet,
 		m_bound
 	);

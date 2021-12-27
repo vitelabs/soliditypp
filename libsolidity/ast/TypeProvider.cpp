@@ -237,8 +237,7 @@ Type const* TypeProvider::fromElementaryTypeName(ElementaryTypeNameToken const& 
 			solAssert(*_stateMutability == StateMutability::Payable, "");
 			return payableAddress();
 		}
-		// Solidity++: default address state mutability is payable 
-		return payableAddress();
+		return address();
 	}
 	// Solidity++: convert tokenId type
 	case Token::TokenId:
@@ -434,12 +433,6 @@ FunctionType const* TypeProvider::function(EventDefinition const& _def)
 	return createAndGet<FunctionType>(_def);
 }
 
-// Solidity++:
-FunctionType const* TypeProvider::function(MessageDefinition const& _def)
-{
-	return createAndGet<FunctionType>(_def);
-}
-
 FunctionType const* TypeProvider::function(FunctionTypeName const& _typeName)
 {
 	return createAndGet<FunctionType>(_typeName);
@@ -467,12 +460,12 @@ FunctionType const* TypeProvider::function(
 	FunctionType::Kind _kind,
 	bool _arbitraryParameters,
 	StateMutability _stateMutability,
-	ExecutionBehavior _executionBehavior,  // Solidity++
 	Declaration const* _declaration,
 	bool _gasSet,
 	bool _valueSet,
-	bool _bound,
-	bool _saltSet
+	bool _tokenSet,
+	bool _saltSet,
+	bool _bound
 )
 {
 	return createAndGet<FunctionType>(
@@ -483,27 +476,13 @@ FunctionType const* TypeProvider::function(
 		_kind,
 		_arbitraryParameters,
 		_stateMutability,
-		_executionBehavior,
 		_declaration,
 		_gasSet,
 		_valueSet,
-		_bound,
-		_saltSet
+		_tokenSet,
+		_saltSet,
+		_bound  // @FIXME: _saltSet <-> _bound ???
 	);
-}
-
-// Solidity++:
-FunctionType const* TypeProvider::callbackFromFunctionCall(
-        FunctionType const* callType
-)
-{
-    callType->returnParameterTypes();
-    return createAndGet<FunctionType>(
-            callType->returnParameterTypes(),
-            TypePointers{},
-            callType->returnParameterNames(),
-            strings{}
-    );
 }
 
 RationalNumberType const* TypeProvider::rationalNumber(rational const& _value, Type const* _compatibleBytesType)

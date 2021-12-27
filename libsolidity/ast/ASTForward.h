@@ -41,7 +41,6 @@ class VariableDeclaration;
 class ModifierDefinition;
 class ModifierInvocation;
 class EventDefinition;
-class MessageDefinition;  // Solidity++
 class MagicVariableDeclaration;
 class TypeName;
 class ElementaryTypeName;

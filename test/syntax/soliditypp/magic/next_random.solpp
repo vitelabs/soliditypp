@@ -1,7 +1,7 @@
-pragma soliditypp >=0.4.0;
+pragma soliditypp >=0.8.0;
 contract Test {
 	uint64 random;
-    onMessage test() {
+    function test() external {
 		random = nextrandom();
 	}
 }

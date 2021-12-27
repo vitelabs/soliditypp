@@ -317,7 +317,7 @@ static std::map<Instruction, InstructionInfo> const c_instructionInfo =
 	{ Instruction::CALLCODE,	{ "CALLCODE",		0, 5, 1, true, Tier::Special } },
 
 	{ Instruction::RETURN,		{ "RETURN",			0, 2, 0, true, Tier::Zero } },
-	{ Instruction::DELEGATECALL,	{ "DELEGATECALL",	0, 6, 1, true, Tier::Special } },
+	{ Instruction::DELEGATECALL,	{ "DELEGATECALL",	0, 5, 1, true, Tier::Special } },
 
 	// Solidity++:
 	{ Instruction::SYNCCALL,	{ "SYNCCALL",	0, 6, 0, true, Tier::Special } },

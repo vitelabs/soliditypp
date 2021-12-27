@@ -643,14 +643,12 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			[[fallthrough]];
 		case FunctionType::Kind::External:
 		case FunctionType::Kind::DelegateCall:
-		case FunctionType::Kind::SendMessage:  // Solidity++
 			_functionCall.expression().accept(*this);
 			uint32_t callbackSelector;
-			if(_functionCall.annotation().awaitId && function.executionBehavior() == ExecutionBehavior::Async)
+			if(!_functionCall.annotation().async)
             {
-			    auto awaitId = _functionCall.annotation().awaitId;
-                callbackSelector = selectorFromAwaitId(awaitId);
-                debug("Callback signature is " + toHex(callbackSelector, HexPrefix::Add));
+			    callbackSelector = selectorFromAwaitId( _functionCall.id());
+                debug("Callback selector is " + toHex(callbackSelector, HexPrefix::Add));
             }
 			else
                 callbackSelector = 0;
@@ -785,8 +783,8 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 					FunctionType::Kind::BareCall,
 					false,
 					StateMutability::NonPayable,
-                    ExecutionBehavior::Async,
 					nullptr,
+					true,
 					true,
 					true
 				),
@@ -1354,8 +1352,8 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 	_functionCallOptions.expression().accept(*this);
 
 	// Desired Stack: [salt], [gas], [value]
-	// Solidity++: desired stack: [tokenId], [amount]
-	enum Option { Salt, Gas, Value, TokenId, Amount };
+	// Solidity++: desired stack: [tokenId], [value]
+	enum Option { Salt, Gas, TokenId, Value };  // Note: the order matters
 
 	vector<Option> presentOptions;
 	FunctionType const& funType = dynamic_cast<FunctionType const&>(
@@ -1363,13 +1361,8 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 	);
 	if (funType.saltSet()) presentOptions.emplace_back(Salt);
 	if (funType.gasSet()) presentOptions.emplace_back(Gas);
-
-	// Solidity++:
-	if (funType.valueSet())
-	{
-	    presentOptions.emplace_back(TokenId);
-        presentOptions.emplace_back(Amount);
-	}
+	if (funType.tokenSet()) presentOptions.emplace_back(TokenId);  // Solidity++:
+	if (funType.valueSet()) presentOptions.emplace_back(Value);
 
 	for (size_t i = 0; i < _functionCallOptions.options().size(); ++i)
 	{
@@ -1383,18 +1376,13 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 		}
 		else if (name == "gas")
 			newOption = Gas;
-		else if (name == "value")
-			newOption = Value;
-		// Solidity++:
-		else if (name == "token")
+		else if (name == "token")  // Solidity++:
         {
 		    newOption = TokenId;
 		    requiredType = TypeProvider::viteTokenId();
         }
-		else if (name == "amount")
-        {
-		    newOption = Amount;
-        }
+		else if (name == "value")
+		    newOption = Value;
 
 		else
 			solAssert(false, "Unexpected option name!");
@@ -2132,22 +2120,7 @@ bool ExpressionCompiler::visit(IndexRangeAccess const& _indexAccess)
 
 bool ExpressionCompiler::visit(AwaitExpression const& _awaitExpression)
 {
-    debug("Visit await expression");
-    CompilerContext::LocationSetter locationSetter(m_context, _awaitExpression);
-
     _awaitExpression.expression().accept(*this);
-    auto call = dynamic_cast<FunctionCall const*>(&_awaitExpression.expression());
-    auto callType = dynamic_cast<FunctionType const *>(call->expression().annotation().type);
-    solAssert(callType, "fail to convert function call: " + callType->toString(false));
-
-    // Unpack return values from calldata
-    if (!callType->returnParameterTypes().empty())
-    {
-        m_context << CompilerUtils::dataStartOffset;
-        m_context << Instruction::DUP1 << Instruction::CALLDATASIZE << Instruction::SUB;
-
-        CompilerUtils(m_context).abiDecode(callType->returnParameterTypes());
-    }
 
     return false;
 }
@@ -2202,13 +2175,6 @@ void ExpressionCompiler::endVisit(Identifier const& _identifier)
 	else if (dynamic_cast<ImportDirective const*>(declaration))
 	{
 		// no-op
-	}
-	// Solidity++: message -> function
-	else if (dynamic_cast<MessageDefinition const*>(declaration))
-	{
-		auto const* function = dynamic_cast<MessageDefinition const*>(declaration);
-		u256 identifier = FunctionType(*function).externalIdentifier();
-		m_context << identifier;
 	}
 	else
 	{
@@ -2501,20 +2467,19 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 	// Solidity++: CALL stack layout
 	// <stack top>
-	// amount [if _functionType.valueSet()]
-	// token  [if _functionType.valueSet()]
+	// value [if _functionType.valueSet()]
+	// token [if _functionType.tokenSet()]
 	// self object [if bound - moved to top right away]
 	// function identifier [unless bare]
 	// contract address
 
 	unsigned selfSize = _functionType.bound() ? _functionType.selfType()->sizeOnStack() : 0;
-	unsigned valueSize = (_functionType.valueSet() ? 2 : 0);
-	unsigned contractStackPos = m_context.currentToBaseStackOffset(1 + valueSize + selfSize + (_functionType.isBareCall() ? 0 : 1));
-	// unsigned gasStackPos = m_context.currentToBaseStackOffset(gasValueSize);
+	unsigned valueTokenSize = (_functionType.valueSet() ? 1u : 0) +  (_functionType.tokenSet() ? 1u : 0);
+	unsigned contractStackPos = m_context.currentToBaseStackOffset(1 + valueTokenSize + selfSize + (_functionType.isBareCall() ? 0 : 1));
+	unsigned tokenStackPos = m_context.currentToBaseStackOffset(valueTokenSize);
 	unsigned valueStackPos = m_context.currentToBaseStackOffset(1);
-	unsigned tokenStackPos = m_context.currentToBaseStackOffset(2);
 
-	m_context.appendDebugInfo("ExpressionCompiler::appendExternalFunctionCall(" + _functionType.externalSignature() + ",");
+	m_context.appendDebugInfo("ExpressionCompiler::appendExternalFunctionCall(" + _functionType.toString(true) + ",");
 	m_context.appendDebugInfo("      args: [");
 	for(auto arg : _arguments)
 	{
@@ -2525,7 +2490,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 	// move self object to top
 	if (_functionType.bound())
-		utils().moveToStackTop(0, _functionType.selfType()->sizeOnStack());
+	    utils().moveToStackTop(valueTokenSize, _functionType.selfType()->sizeOnStack());
 
 	auto funKind = _functionType.kind();
 
@@ -2599,7 +2564,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	utils().fetchFreeMemoryPointer();
 	if (!_functionType.isBareCall())
 	{
-		m_context << dupInstruction(2 + valueSize + CompilerUtils::sizeOnStack(argumentTypes));
+	    m_context << dupInstruction(2 + valueTokenSize + CompilerUtils::sizeOnStack(argumentTypes));
 		utils().storeInMemoryDynamic(IntegerType(8 * CompilerUtils::dataStartOffset), false);
 	}
 
@@ -2661,17 +2626,24 @@ void ExpressionCompiler::appendExternalFunctionCall(
     m_context.appendDebugInfo("stack: [input_size, input_start] top");
 
 	// CALL arguments: inSize, inOff (already present up to here)
-	// [value,] addr (stack top)
+	// [value, token] addr (stack top)
 	if (isDelegateCall)
 		solAssert(!_functionType.valueSet(), "Value set for delegatecall");
 	else if (useStaticCall)
 		solAssert(!_functionType.valueSet(), "Value set for staticcall");
-	else if (_functionType.valueSet())
+	else if (_functionType.valueSet() && _functionType.tokenSet())
 	{
 	    m_context.appendDebugInfo("value to send");
 		m_context << dupInstruction(m_context.baseToCurrentStackOffset(valueStackPos));
-		m_context.appendDebugInfo("token id");
+		m_context.appendDebugInfo("tokenId");
 		m_context << dupInstruction(m_context.baseToCurrentStackOffset(tokenStackPos));  // Solidity++: push tokenId
+	}
+	else if (_functionType.valueSet() && !_functionType.tokenSet())
+	{
+	    m_context.appendDebugInfo("value to send");
+	    m_context << dupInstruction(m_context.baseToCurrentStackOffset(valueStackPos));
+	    m_context.appendDebugInfo("default tokenId");
+	    m_context << u256("0x2445f6e5cde8c2c70e44");  // Solidity++: push tokenId
 	}
 	else
 	{
@@ -2736,9 +2708,9 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 	unsigned remainsSize =
 		2u + // contract address, input_memory_end
-		(_functionType.valueSet() ? 2 : 0) +  // Solidity++: amount + tokenId
-		// (_functionType.gasSet() ? 1 : 0) +  // Solidity++: no gas
-		(!_functionType.isBareCall() ? 1 : 0);
+		(_functionType.valueSet() ? 1 : 0) +  // Solidity++: value
+		(_functionType.tokenSet() ? 1 : 0) +  // Solidity++: tokenId
+		(!_functionType.isBareCall() ? 1 : 0);  // function id
 
 	evmasm::AssemblyItem endTag = m_context.newTag();
 
@@ -2788,10 +2760,22 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		m_context << Instruction::SUB << Instruction::MLOAD;
 	}
 
-	// Solidity++: no real return data, but need placeholder in async call (call external function without await operator)
-	// r = a.f();  // r will be set to zero value of return type of f().
-	if (!_callbackSelector)
+	// Solidity++: prepare return data of an external call (either sync or async)
+	if (!!_callbackSelector)
 	{
+	    // Sync call: unpack return values from calldata of callback
+	    if (!_functionType.returnParameterTypes().empty())
+	    {
+	        m_context << CompilerUtils::dataStartOffset;
+	        m_context << Instruction::DUP1 << Instruction::CALLDATASIZE << Instruction::SUB;
+
+	        CompilerUtils(m_context).abiDecode(_functionType.returnParameterTypes());
+	    }
+	}
+	else
+	{
+	    // Async call: @FIXME: no real return data, but need a placeholder
+	    // for `r = a.f();`, r will be set to zero value of return type of f().
 	    for(auto returnType : _functionType.returnParameterTypes()) {
 	        utils().pushZeroValue(*returnType);  // just a placeholder, do not use it
 	    }
@@ -2814,7 +2798,7 @@ void ExpressionCompiler::appendExpressionCopyToMemory(Type const& _expectedType,
 
 void ExpressionCompiler::appendVariable(VariableDeclaration const& _variable, Expression const& _expression)
 {
-    m_context.appendDebugInfo("ExpressionCompiler::appendVariable(" + _variable.toString() + ", " + _expression.location().text() + ")");
+    m_context.appendDebugInfo("ExpressionCompiler::appendVariable(" + _variable.name() + ", " + _expression.location().text() + ")");
 	if (_variable.isConstant())
 		acceptAndConvert(*_variable.value(), *_variable.annotation().type);
 	else if (_variable.immutable())

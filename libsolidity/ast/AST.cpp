@@ -1,9 +1,24 @@
+/*
+	This file is part of solidity.
+
+	solidity is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	solidity is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with solidity.  If not, see <http://www.gnu.org/licenses/>.
+*/
 // SPDX-License-Identifier: GPL-3.0
 /**
- * @author Charles <charles@vite.org>
- * @date 2021
- * Solidity++ Abstract Syntax Tree.
- * Solidity++ is modified from Solidity under the terms of the GNU General Public License.
+ * @author Christian <c@ethdev.com>
+ * @date 2014
+ * Solidity abstract syntax tree.
  */
 
 #include <libsolidity/ast/AST.h>
@@ -11,6 +26,7 @@
 #include <libsolidity/ast/ASTVisitor.h>
 #include <libsolidity/ast/AST_accept.h>
 #include <libsolidity/ast/TypeProvider.h>
+#include <libsolutil/Keccak256.h>
 #include <libsolutil/Blake2.h>
 
 #include <boost/algorithm/string.hpp>
@@ -77,23 +93,6 @@ bool ContractDefinition::derivesFrom(ContractDefinition const& _base) const
 map<util::FixedHash<4>, FunctionTypePointer> ContractDefinition::interfaceFunctions(bool _includeInheritedFunctions) const
 {
 	auto exportedFunctionList = interfaceFunctionList(_includeInheritedFunctions);
-
-	map<util::FixedHash<4>, FunctionTypePointer> exportedFunctions;
-	for (auto const& it: exportedFunctionList)
-		exportedFunctions.insert(it);
-
-	solAssert(
-		exportedFunctionList.size() == exportedFunctions.size(),
-		"Hash collision at Function Definition Hash calculation"
-	);
-
-	return exportedFunctions;
-}
-
-// Solidity++: get offchain functions
-map<util::FixedHash<4>, FunctionTypePointer> ContractDefinition::offchainFunctions(bool _includeInheritedFunctions) const
-{
-	auto exportedFunctionList = offchainFunctionList(_includeInheritedFunctions);
 
 	map<util::FixedHash<4>, FunctionTypePointer> exportedFunctions;
 	for (auto const& it: exportedFunctionList)
@@ -182,48 +181,6 @@ vector<pair<util::FixedHash<4>, FunctionTypePointer>> const& ContractDefinition:
 				if (v->isPartOfExternalInterface())
 					functions.push_back(TypeProvider::function(*v));
 			for (FunctionTypePointer const& fun: functions)
-			{
-				if (!fun->interfaceFunctionType())
-					// Fails hopefully because we already registered the error
-					continue;
-				string functionSignature = fun->externalSignature();
-				if (signaturesSeen.count(functionSignature) == 0)
-				{
-					signaturesSeen.insert(functionSignature);
-					// Solidity++: Use blake2b instead of Keccak256
-					util::FixedHash<4> hash(util::blake2b(functionSignature));
-					interfaceFunctionList.emplace_back(hash, fun);
-				}
-			}
-		}
-
-		return interfaceFunctionList;
-	});
-}
-
-// Solidity++: get offchain function list
-vector<pair<util::FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::offchainFunctionList(bool _includeInheritedFunctions) const
-{
-	return m_offchainFunctionList[_includeInheritedFunctions].init([&]{
-		set<string> signaturesSeen;
-		vector<pair<util::FixedHash<4>, FunctionTypePointer>> interfaceFunctionList;
-
-		for (ContractDefinition const* contract: annotation().linearizedBaseContracts)
-		{
-			if (_includeInheritedFunctions == false && contract != this)
-				continue;
-			vector<FunctionTypePointer> functions;
-			// User defined offchain functions
-			for (FunctionDefinition const* f: contract->definedFunctions())
-				if (f->isOffchain())
-					functions.push_back(TypeProvider::function(*f, FunctionType::Kind::External)); // TODO: offchain kind?
-
-            // Solidity++: generate offchain getter automatically for public state variables
-            for (VariableDeclaration const* v: contract->stateVariables())
-                if (v->isPartOfExternalInterface())
-                    functions.push_back(TypeProvider::function(*v));
-
-            for (FunctionTypePointer const& fun: functions)
 			{
 				if (!fun->interfaceFunctionType())
 					// Fails hopefully because we already registered the error
@@ -351,7 +308,6 @@ FunctionTypePointer FunctionDefinition::functionType(bool _internal) const
 		case Visibility::Public:
 			return TypeProvider::function(*this, FunctionType::Kind::Internal);
 		case Visibility::External:
-		case Visibility::Offchain:
 			return {};
 		}
 	}
@@ -366,7 +322,6 @@ FunctionTypePointer FunctionDefinition::functionType(bool _internal) const
 			return {};
 		case Visibility::Public:
 		case Visibility::External:
-		case Visibility::Offchain:
 			return TypeProvider::function(*this, FunctionType::Kind::External);
 		}
 	}
@@ -497,27 +452,6 @@ EventDefinitionAnnotation& EventDefinition::annotation() const
 	return initAnnotation<EventDefinitionAnnotation>();
 }
 
-// Solidity++:
-TypePointer MessageDefinition::type() const
-{
-	return TypeProvider::function(*this);
-}
-
-// Solidity++:
-FunctionTypePointer MessageDefinition::functionType(bool _internal) const
-{
-	if (_internal)
-		return TypeProvider::function(*this);
-	else
-		return nullptr;
-}
-
-// Solidity++:
-MessageDefinitionAnnotation& MessageDefinition::annotation() const
-{
-	return initAnnotation<MessageDefinitionAnnotation>();
-}
-
 SourceUnit const& Scopable::sourceUnit() const
 {
 	ASTNode const* s = scope();
@@ -564,12 +498,6 @@ bool Declaration::isEventParameter() const
 {
 	solAssert(scope(), "");
 	return dynamic_cast<EventDefinition const*>(scope());
-}
-
-bool Declaration::isMessageParameter() const
-{
-    solAssert(scope(), "");
-    return dynamic_cast<MessageDefinition const*>(scope());
 }
 
 DeclarationAnnotation& Declaration::annotation() const
@@ -715,7 +643,7 @@ set<VariableDeclaration::Location> VariableDeclaration::allowedDataLocations() c
 {
 	using Location = VariableDeclaration::Location;
 
-	if (!hasReferenceOrMappingType() || isStateVariable() || isEventParameter() || isMessageParameter())
+	if (!hasReferenceOrMappingType() || isStateVariable() || isEventParameter())
 		return set<Location>{ Location::Unspecified };
 	else if (isCallableOrCatchParameter())
 	{
@@ -746,15 +674,6 @@ string VariableDeclaration::externalIdentifierHex() const
 	return TypeProvider::function(*this)->externalIdentifierHex();
 }
 
-// Solidity++:
-string VariableDeclaration::toString() const
-{
-    auto name = this->name();
-    auto type = this->type()->toString();
-    auto varString = type + " " + name;
-    return varString;
-}
-
 TypePointer VariableDeclaration::type() const
 {
 	return annotation().type;
@@ -773,7 +692,6 @@ FunctionTypePointer VariableDeclaration::functionType(bool _internal) const
 		return nullptr;
 	case Visibility::Public:
 	case Visibility::External:
-	case Visibility::Offchain:
 		return TypeProvider::function(*this);
 	}
 
@@ -902,53 +820,10 @@ bool Literal::looksLikeAddress() const
 	return abs(int(valueWithoutUnderscores().length()) - 42) <= 1;
 }
 
-// Solidity++:
-bool Literal::looksLikeViteAddress() const
+bool Literal::passesAddressChecksum() const
 {
-	if (!boost::starts_with(value(), "vite_"))
-		return false;
-
-	if (subDenomination() != SubDenomination::None)
-		return false;
-
-	return int(value().length()) == 55;
-}
-
-// Solidity++:
-bool Literal::looksLikeViteTokenId() const
-{
-	if (!boost::starts_with(value(), "tti_"))
-		return false;
-
-	if (subDenomination() != SubDenomination::None)
-		return false;
-
-	return int(value().length()) == 28;
-}
-
-// Solidity++: check vite address checksum
-bool Literal::passesViteAddressChecksum() const
-{
-	return util::passesViteAddressChecksum(value());
-}
-
-// Solidity++: check vite address checksum
-
-bool Literal::passesViteTokenIdChecksum() const
-{
-	return util::passesViteTokenIdChecksum(value());
-}
-
-// Solidity++: get vite address hex value
-ASTString Literal::getViteAddressHex() const
-{
-	return util::getViteAddressHex(value());
-}
-
-// Solidity++: get vite token id hex value
-ASTString Literal::getViteTokenIdHex() const
-{
-	return util::getViteTokenIdHex(value());
+	solAssert(isHexNumber(), "Expected hex number");
+	return util::passesAddressChecksum(valueWithoutUnderscores(), true);
 }
 
 string Literal::getChecksummedAddress() const

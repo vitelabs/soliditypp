@@ -18,12 +18,12 @@ namespace solidity::frontend::test
 
 BOOST_FIXTURE_TEST_SUITE(SolidityppNameAndTypeResolution, AnalysisFramework)
 
-BOOST_AUTO_TEST_CASE(onmessage_canonical_signature_type_aliases)
+BOOST_AUTO_TEST_CASE(function_canonical_signature_type_aliases)
 {
 	SourceUnit const* sourceUnit = nullptr;
 	char const* text = R"(
 		contract Test {
-			onMessage boo(uint, bytes32, address) {
+			function foo(uint, bytes32, address) external {
 			}
 		}
 	)";
@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE(onmessage_canonical_signature_type_aliases)
 			auto functions = contract->definedFunctions();
 			if (functions.empty())
 				continue;
-			BOOST_CHECK_EQUAL("boo(uint256,bytes32,address)", functions[0]->externalSignature());
+			BOOST_CHECK_EQUAL("foo(uint256,bytes32,address)", functions[0]->externalSignature());
 		}
 }
 

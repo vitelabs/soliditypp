@@ -1,11 +1,11 @@
-pragma soliditypp >=0.4.2;
+pragma soliditypp >=0.8.0;
 
 contract TokenIdInEvent {
 
-    event e(tokenId token);
+    event E(tokenId token);
 
-    onMessage f() {
+    function f() external {
 		tokenId t = "tti_5649544520544f4b454e6e40";
-        emit e(t);
+        emit E(t);
 	}
 }

@@ -1,7 +1,0 @@
-pragma soliditypp >=0.4.2;
-contract HelloWorld {
-   event Greeting(string s);
-   onMessage SayHello()  {
-      emit Greeting("Hello World");
-   }
-}

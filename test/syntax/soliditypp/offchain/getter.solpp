@@ -1,9 +1,0 @@
-pragma soliditypp >=0.4.2;
-
-contract Test {
-    uint a = 123;
-
-    getter getA() view returns (uint) {
-        return a;
-    }
-}
