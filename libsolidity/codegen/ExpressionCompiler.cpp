@@ -2643,13 +2643,13 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	    m_context.appendDebugInfo("value to send");
 	    m_context << dupInstruction(m_context.baseToCurrentStackOffset(valueStackPos));
 	    m_context.appendDebugInfo("default tokenId");
-	    m_context << u256("0x2445f6e5cde8c2c70e44");  // Solidity++: push tokenId
+	    m_context << u256("0x5649544520544f4b454e");  // Solidity++: push tokenId
 	}
 	else
 	{
 		// Solidity++: 0 VITE
 		m_context.appendDebugInfo("no value to send (0 VITE)");
-		m_context << u256(0) << u256("0x2445f6e5cde8c2c70e44");
+		m_context << u256(0) << u256("0x5649544520544f4b454e");
 	}
 
 	m_context.appendDebugInfo("contract address");
