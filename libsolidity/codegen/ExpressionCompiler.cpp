@@ -2509,7 +2509,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		solAssert(!_functionType.isBareCall(), "");
 	}
 
-	// Solidity++: no return data
+	// Solidity++:
 	// ReturnInfo const returnInfo{m_context.evmVersion(), _functionType};
 	// bool const haveReturndatacopy = m_context.evmVersion().supportsReturndata();
 	// unsigned const retSize = returnInfo.estimatedReturnSize;
@@ -2701,7 +2701,8 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	else if (!!_callbackSelector)
 	{
 	    m_context << Instruction::SYNCCALL;
-	    m_context.addCallbackDest(_callbackSelector);
+	    m_context << Instruction::STOP;
+	    m_context.addCallbackDest(_callbackSelector);  // An additional bool is pushed into stack by CALLBACKDEST.
 	}
 	else
 		m_context << Instruction::CALL;
@@ -2714,21 +2715,24 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 	evmasm::AssemblyItem endTag = m_context.newTag();
 
-	// if (!returnSuccessConditionAndReturndata && !_tryCall)
-	// {
-	// 	// Propagate error condition (if CALL pushes 0 on stack).
-	// 	m_context << Instruction::ISZERO;
-	// 	m_context.appendConditionalRevert(true);
-	// }
-	// else
-	// 	m_context << swapInstruction(remainsSize);
+	if (!!_callbackSelector)  // Solidity++: success flag only be pushed into stack if the call is a sync call
+	{
+	    if (!returnSuccessConditionAndReturndata && !_tryCall)
+	    {
+	        // Propagate error condition (if CALLBACKDEST pushes 0 on stack).
+	        m_context << Instruction::ISZERO;
+	        m_context.appendConditionalRevert(true);
+	    }
+	    else
+	        m_context << swapInstruction(remainsSize);
+	}
 
 	m_context.appendDebugInfo("pop stack slots " + to_string(remainsSize));
 	utils().popStackSlots(remainsSize);
 
 	// Only success flag is remaining on stack.
 
-	if (_tryCall)
+	if (_tryCall && !!_callbackSelector)
 	{
 		m_context << Instruction::DUP1 << Instruction::ISZERO;
 		m_context.appendConditionalJumpTo(endTag);
@@ -2742,7 +2746,9 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		// an internal helper function e.g. for ``send`` and ``transfer``. In that
 		// case we're only interested in the success condition, not the return data.
 		if (!_functionType.returnParameterTypes().empty())
-			utils().returnDataToArray();
+		{
+            utils().returnDataToArray();
+		}
 	}
 	else if (funKind == FunctionType::Kind::RIPEMD160)
 	{
@@ -2759,25 +2765,23 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		utils().fetchFreeMemoryPointer();
 		m_context << Instruction::SUB << Instruction::MLOAD;
 	}
-
-	// Solidity++: prepare return data of an external call (either sync or async)
-	if (!!_callbackSelector)
+	else if (!_functionType.returnParameterTypes().empty())
 	{
-	    // Sync call: unpack return values from calldata of callback
-	    if (!_functionType.returnParameterTypes().empty())
+	    // Solidity++: prepare return data of an external call (either sync or async)
+	    if (!!_callbackSelector)
 	    {
 	        m_context << CompilerUtils::dataStartOffset;
 	        m_context << Instruction::DUP1 << Instruction::CALLDATASIZE << Instruction::SUB;
 
 	        CompilerUtils(m_context).abiDecode(_functionType.returnParameterTypes());
 	    }
-	}
-	else
-	{
-	    // Async call: @FIXME: no real return data, but need a placeholder
-	    // for `r = a.f();`, r will be set to zero value of return type of f().
-	    for(auto returnType : _functionType.returnParameterTypes()) {
-	        utils().pushZeroValue(*returnType);  // just a placeholder, do not use it
+	    else
+	    {
+	        // Solidity++: @TODO: Implement a promise. At present there's no real data returned, but need a placeholder.
+	        // for `r = a.f();`, r will be set to zero value of return type of f().
+	        for(auto returnType : _functionType.returnParameterTypes()) {
+	            utils().pushZeroValue(*returnType);  // just a placeholder, do not use it
+	        }
 	    }
 	}
 

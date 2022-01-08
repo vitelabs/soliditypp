@@ -71,7 +71,7 @@ void Compiler::compileViteContract(
 	debug("Compiling constructor");
 	m_runtimeSub = creationCompiler.compileConstructor(_contract, _otherCompilers);
 
-	m_context.optimise(m_optimiserSettings);
+//	m_context.optimise(m_optimiserSettings);
 
 	solAssert(m_context.appendYulUtilityFunctionsRan(), "appendYulUtilityFunctions() was not called in compiler context.");
 	solAssert(m_runtimeContext.appendYulUtilityFunctionsRan(), "appendYulUtilityFunctions() was not called in runtime compiler context.");

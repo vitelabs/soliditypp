@@ -321,7 +321,7 @@ static std::map<Instruction, InstructionInfo> const c_instructionInfo =
 
 	// Solidity++:
 	{ Instruction::SYNCCALL,	{ "SYNCCALL",	0, 6, 0, true, Tier::Special } },
-	{ Instruction::CALLBACKDEST,	{ "CALLBACKDEST",	0, 0, 0, true, Tier::Special } },
+	{ Instruction::CALLBACKDEST,	{ "CALLBACKDEST",	0, 0, 1, true, Tier::Special } },
 
 	{ Instruction::STATICCALL,	{ "STATICCALL",		0, 6, 1, true, Tier::Special } },
 	{ Instruction::CREATE2,		{ "CREATE2",		0, 4, 1, true, Tier::Special } },
