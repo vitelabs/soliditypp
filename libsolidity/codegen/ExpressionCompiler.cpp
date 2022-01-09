@@ -2509,12 +2509,13 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		solAssert(!_functionType.isBareCall(), "");
 	}
 
-	// Solidity++:
-	// ReturnInfo const returnInfo{m_context.evmVersion(), _functionType};
-	// bool const haveReturndatacopy = m_context.evmVersion().supportsReturndata();
-	// unsigned const retSize = returnInfo.estimatedReturnSize;
-	// bool const dynamicReturnSize = returnInfo.dynamicReturnSize;
-	// TypePointers const& returnTypes = returnInfo.returnTypes;
+	ReturnInfo const returnInfo{m_context.evmVersion(), _functionType};
+	bool const haveReturndatacopy = m_context.evmVersion().supportsReturndata();
+	unsigned const retSize = returnInfo.estimatedReturnSize;
+	// Solidity++: force dynamic return data size
+//	bool const dynamicReturnSize = returnInfo.dynamicReturnSize;
+	bool const dynamicReturnSize = true;
+	TypePointers const& returnTypes = returnInfo.returnTypes;
 
 	// Evaluate arguments.
 	m_context.appendDebugInfo("evaluate arguments");
@@ -2746,9 +2747,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		// an internal helper function e.g. for ``send`` and ``transfer``. In that
 		// case we're only interested in the success condition, not the return data.
 		if (!_functionType.returnParameterTypes().empty())
-		{
-            utils().returnDataToArray();
-		}
+			utils().returnDataToArray();
 	}
 	else if (funKind == FunctionType::Kind::RIPEMD160)
 	{
@@ -2765,15 +2764,46 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		utils().fetchFreeMemoryPointer();
 		m_context << Instruction::SUB << Instruction::MLOAD;
 	}
-	else if (!_functionType.returnParameterTypes().empty())
+
+	else if (!returnTypes.empty())
 	{
 	    // Solidity++: prepare return data of an external call (either sync or async)
 	    if (!!_callbackSelector)
 	    {
-	        m_context << CompilerUtils::dataStartOffset;
-	        m_context << Instruction::DUP1 << Instruction::CALLDATASIZE << Instruction::SUB;
+	        utils().fetchFreeMemoryPointer();
+	        // Stack: return_data_start
 
-	        CompilerUtils(m_context).abiDecode(_functionType.returnParameterTypes());
+	        // The old decoder did not allocate any memory (i.e. did not touch the free
+	        // memory pointer), but kept references to the return data for
+	        // (statically-sized) arrays
+	        bool needToUpdateFreeMemoryPtr = false;
+	        if (dynamicReturnSize || m_context.useABICoderV2())
+	            needToUpdateFreeMemoryPtr = true;
+	        else
+	            for (auto const& retType: returnTypes)
+	                if (dynamic_cast<ReferenceType const*>(retType))
+	                    needToUpdateFreeMemoryPtr = true;
+
+            // Stack: return_data_start
+            if (dynamicReturnSize)
+            {
+                solAssert(haveReturndatacopy, "");
+                m_context.appendInlineAssembly("{ returndatacopy(return_data_start, 0, returndatasize()) }", {"return_data_start"});
+            }
+            else
+                solAssert(retSize > 0, "");
+            // Always use the actual return length, and not our calculated expected length, if returndatacopy is supported.
+            // This ensures it can catch badly formatted input from external calls.
+            m_context << (haveReturndatacopy ? evmasm::AssemblyItem(Instruction::RETURNDATASIZE) : u256(retSize));
+            // Stack: return_data_start return_data_size
+            if (needToUpdateFreeMemoryPtr)
+                m_context.appendInlineAssembly(R"({
+                    // round size to the next multiple of 32
+                    let newMem := add(start, and(add(size, 0x1f), not(0x1f)))
+                    mstore(0x40, newMem)
+                })", {"start", "size"});
+
+            utils().abiDecode(returnTypes, true);
 	    }
 	    else
 	    {
