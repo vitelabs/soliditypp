@@ -24,8 +24,8 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/JumpdestRemover.h
 	${ORIGINAL_SOURCE_DIR}/KnownState.cpp
 	${ORIGINAL_SOURCE_DIR}/KnownState.h
-	${ORIGINAL_SOURCE_DIR}/LinkerObject.cpp
-	${ORIGINAL_SOURCE_DIR}/LinkerObject.h
+	LinkerObject.cpp
+	LinkerObject.h
 	${ORIGINAL_SOURCE_DIR}/PathGasMeter.cpp
 	${ORIGINAL_SOURCE_DIR}/PathGasMeter.h
 	${ORIGINAL_SOURCE_DIR}/PeepholeOptimiser.cpp

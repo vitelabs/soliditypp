@@ -108,7 +108,7 @@ private:
 	/// Base path, used for resolving relative paths in imports.
 	boost::filesystem::path m_basePath;
 	/// map of library names to addresses
-	std::map<std::string, util::h160> m_libraries;
+	std::map<std::string, util::h168> m_libraries;  // Solidity++: 168-bit address
 	/// Solidity compiler stack
 	std::unique_ptr<frontend::CompilerStack> m_compiler;
 	CompilerStack::State m_stopAfter = CompilerStack::State::CompilationSuccessful;

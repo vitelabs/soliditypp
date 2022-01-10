@@ -645,7 +645,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 		case FunctionType::Kind::DelegateCall:
 			_functionCall.expression().accept(*this);
 			uint32_t callbackSelector;
-			if(!_functionCall.annotation().async)
+			if(!_functionCall.annotation().async && function.kind() != FunctionType::Kind::DelegateCall && function.kind() != FunctionType::Kind::BareDelegateCall)
             {
 			    callbackSelector = selectorFromAwaitId( _functionCall.id());
                 debug("Callback selector is " + toHex(callbackSelector, HexPrefix::Add));
@@ -2512,9 +2512,11 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	ReturnInfo const returnInfo{m_context.evmVersion(), _functionType};
 	bool const haveReturndatacopy = m_context.evmVersion().supportsReturndata();
 	unsigned const retSize = returnInfo.estimatedReturnSize;
-	// Solidity++: force dynamic return data size
-//	bool const dynamicReturnSize = returnInfo.dynamicReturnSize;
-	bool const dynamicReturnSize = true;
+
+	// Solidity++: force dynamic return size for non-delegate calls,
+	// because the data will return asynchronously and only be taken from RETURNDATACOPY.
+	// But we still have chance to get return data from memory by passing retOffset / retLength in DELEGATECALL.
+	bool const dynamicReturnSize = !isDelegateCall || returnInfo.dynamicReturnSize;
 	TypePointers const& returnTypes = returnInfo.returnTypes;
 
 	// Evaluate arguments.
@@ -2539,6 +2541,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		// Output area will be "start of input area" - 32.
 		// The reason is that a failing ECRecover cannot be detected, it will just return
 		// zero bytes (which we cannot detect).
+		// @fixme:
 		// solAssert(0 < retSize && retSize <= 32, "");
 		utils().fetchFreeMemoryPointer();
 		m_context << u256(0) << Instruction::DUP2 << Instruction::MSTORE;
@@ -2546,7 +2549,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		utils().storeFreeMemoryPointer();
 	}
 
-	// Solidity++: no gas
+	// Solidity++: @fixme
 	// if (!m_context.evmVersion().canOverchargeGasForCall())
 	// {
 	// 	// Touch the end of the output area so that we do not pay for memory resize during the call
@@ -2562,6 +2565,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// 	}
 	// }
 
+	// Copy function identifier to memory.
 	utils().fetchFreeMemoryPointer();
 	if (!_functionType.isBareCall())
 	{
@@ -2588,43 +2592,47 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		encodeForLibraryCall
 	);
 
-	// Solidity++:
-	// Stack now: [address, function_id, (token), (amount), input_memory_end] top
+	// Stack now:
+	// <stack top>
+	// input_memory_end
+	// value [if _functionType.valueSet()]
+	// token [if _functionType.tokenSet()]
+	// function identifier [unless bare]
+	// contract address
 
 	// Output data will replace input data, unless we have ECRecover (then, output
 	// area will be 32 bytes just before input area).
 	// put on stack: <size of output> <memory pos of output> <size of input> <memory pos of input>
-
-	// Solidity++: no output data
-	// m_context << u256(retSize);
-
-	m_context.appendDebugInfo("the start of input");
+	// Solidity++: <size of output> <memory pos of output> are only required for delegate calls
+	// stack here: addr, func, token, value, inEnd
+	m_context << u256(retSize);
+	// stack here: addr, func, token, value, inEnd, outSize
 	utils().fetchFreeMemoryPointer(); // This is the start of input
-
-	// if (funKind == FunctionType::Kind::ECRecover)
-	// {
-	// 	// In this case, output is 32 bytes before input and has already been cleared.
-	// 	m_context << u256(32) << Instruction::DUP2 << Instruction::SUB << Instruction::SWAP1;
-	// 	// Here: <input end> <output size> <outpos> <input pos>
-	// 	m_context << Instruction::DUP1 << Instruction::DUP5 << Instruction::SUB;
-	// 	m_context << Instruction::SWAP1;
-	// }
-	// else
-	// {
-	// 	m_context << Instruction::DUP1 << Instruction::DUP4 << Instruction::SUB;
-	// 	m_context << Instruction::DUP2;
-	// }
-
-	// Solidity++: @todo: use utils.toSizeAfterFreeMemoryPointer() instead
-	m_context.appendDebugInfo("stack: [input_start] top");
-	m_context << Instruction::DUP1;
-    m_context.appendDebugInfo("stack: [input_start, input_start] top");
-	m_context << Instruction::DUP3;
-    m_context.appendDebugInfo("stack: [input_start, input_start, input_end] top");
-    m_context << Instruction::SUB;
-    m_context.appendDebugInfo("stack: [input_start, input_size] top");
-	m_context << Instruction::SWAP1;
-    m_context.appendDebugInfo("stack: [input_size, input_start] top");
+	// stack here: addr, func, token, value, inEnd, outSize, inOff
+	if (funKind == FunctionType::Kind::ECRecover)
+	{
+		// In this case, output is 32 bytes before input and has already been cleared.
+		// stack here: addr, func, token, value, inEnd, outSize, inOff
+		m_context << u256(32) << Instruction::DUP2 << Instruction::SUB << Instruction::SWAP1;
+		// Here: <input end> <output size> <outpos> <input pos>
+		m_context << Instruction::DUP1 << Instruction::DUP5 << Instruction::SUB;
+		m_context << Instruction::SWAP1;
+	}
+	else if (isDelegateCall)
+	{
+	    // stack here: addr, func, token, value, inEnd, outSize, inOff
+		m_context << Instruction::DUP1 << Instruction::DUP4 << Instruction::SUB;
+		// stack here: addr, func, token, value, inEnd, outSize, inOff, inSize
+		m_context << Instruction::DUP2;
+		// stack here: addr, func, token, value, inEnd, outSize, inOff, inSize, inOff
+	} else {
+	    // Solidity++: don't need outSize, outOff
+	    // stack here: addr, func, token, value, inEnd, outSize, inOff
+	    m_context << Instruction::SWAP1 << Instruction::POP; // pop outSize
+	    // stack here: addr, func, token, value, inEnd, inOff
+	    m_context << Instruction::DUP1 << Instruction::DUP3 << Instruction::SUB << Instruction::SWAP1;
+	    // stack here: addr, func, token, value, inSize, inOff
+	}
 
 	// CALL arguments: inSize, inOff (already present up to here)
 	// [value, token] addr (stack top)
@@ -2656,7 +2664,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	m_context.appendDebugInfo("contract address");
 	m_context << dupInstruction(m_context.baseToCurrentStackOffset(contractStackPos));
 
-	if(!!_callbackSelector)
+	if(!!_callbackSelector && !isDelegateCall)
 	{
 	    m_context.appendDebugInfo("callback id");
 	    m_context << _callbackSelector;
@@ -2716,7 +2724,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 	evmasm::AssemblyItem endTag = m_context.newTag();
 
-	if (!!_callbackSelector)  // Solidity++: success flag only be pushed into stack if the call is a sync call
+	if (!!_callbackSelector || isDelegateCall)  // Solidity++: success flag only be pushed into stack if the call is a sync call
 	{
 	    if (!returnSuccessConditionAndReturndata && !_tryCall)
 	    {
@@ -2733,7 +2741,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 	// Only success flag is remaining on stack.
 
-	if (_tryCall && !!_callbackSelector)
+	if (_tryCall && (!!_callbackSelector || isDelegateCall))
 	{
 		m_context << Instruction::DUP1 << Instruction::ISZERO;
 		m_context.appendConditionalJumpTo(endTag);
@@ -2764,11 +2772,10 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		utils().fetchFreeMemoryPointer();
 		m_context << Instruction::SUB << Instruction::MLOAD;
 	}
-
 	else if (!returnTypes.empty())
 	{
 	    // Solidity++: prepare return data of an external call (either sync or async)
-	    if (!!_callbackSelector)
+	    if (!!_callbackSelector || isDelegateCall)
 	    {
 	        utils().fetchFreeMemoryPointer();
 	        // Stack: return_data_start

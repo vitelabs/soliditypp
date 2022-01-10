@@ -142,8 +142,8 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/interface/Natspec.h
 	${ORIGINAL_SOURCE_DIR}/interface/OptimiserSettings.h
 	${ORIGINAL_SOURCE_DIR}/interface/ReadFile.h
-	${ORIGINAL_SOURCE_DIR}/interface/StandardCompiler.cpp
-	${ORIGINAL_SOURCE_DIR}/interface/StandardCompiler.h
+	interface/StandardCompiler.cpp
+	interface/StandardCompiler.h
 	${ORIGINAL_SOURCE_DIR}/interface/StorageLayout.cpp
 	${ORIGINAL_SOURCE_DIR}/interface/StorageLayout.h
 	interface/Version.cpp

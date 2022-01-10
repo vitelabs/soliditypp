@@ -366,7 +366,7 @@ AssemblyItem Assembly::namedTag(string const& _name)
 
 AssemblyItem Assembly::newPushLibraryAddress(string const& _identifier)
 {
-	h256 h(util::blake2b(_identifier));  // Solidity++: keccak256 -> blake2b
+	h256 h(util::keccak256(_identifier));
 	m_libraries[h] = _identifier;
 	return AssemblyItem{PushLibraryAddress, h};
 }
@@ -675,9 +675,9 @@ LinkerObject const& Assembly::assemble() const
 			break;
 		}
 		case PushLibraryAddress:
-			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH20));
+		    ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH21));  // Solidity++: 168-bit address
 			ret.linkReferences[ret.bytecode.size()] = m_libraries.at(i.data());
-			ret.bytecode.resize(ret.bytecode.size() + 20);
+			ret.bytecode.resize(ret.bytecode.size() + 21);  // Solidity++: 168-bit address
 			break;
 		case PushImmutable:
 			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH32));
@@ -711,8 +711,8 @@ LinkerObject const& Assembly::assemble() const
 			break;
 		}
 		case PushDeployTimeAddress:
-			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH20));
-			ret.bytecode.resize(ret.bytecode.size() + 20);
+		    ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH21));  // Solidity++: 168-bit address
+		    ret.bytecode.resize(ret.bytecode.size() + 21);  // Solidity++: 168-bit address
 			break;
 		case Tag:
 			assertThrow(i.data() != 0, AssemblyException, "Invalid tag position.");

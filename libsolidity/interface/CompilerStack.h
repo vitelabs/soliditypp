@@ -125,7 +125,7 @@ public:
 
 	/// Sets library addresses. Addresses are cleared iff @a _libraries is missing.
 	/// Must be set before parsing.
-	void setLibraries(std::map<std::string, util::h160> const& _libraries = {});
+	void setLibraries(std::map<std::string, util::h168> const& _libraries = {});
 
 	/// Changes the optimiser settings.
 	/// Must be set before parsing.
@@ -462,7 +462,7 @@ private:
 	bool m_generateEvmBytecode = true;
 	bool m_generateIR = false;
 	bool m_generateEwasm = false;
-	std::map<std::string, util::h160> m_libraries;
+	std::map<std::string, util::h168> m_libraries;  // Solidity++: 168-bit address
 	/// list of path prefix remappings, e.g. mylibrary: github.com/ethereum = /usr/local/ethereum
 	/// "context:prefix=target"
 	std::vector<Remapping> m_remappings;

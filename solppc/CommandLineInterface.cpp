@@ -690,29 +690,27 @@ bool CommandLineInterface::parseLibraryOption(string const& _input)
 				return false;
 			}
 
-			if (addrString.substr(0, 2) == "0x")
-				addrString = addrString.substr(2);
-			else
+			// Solidity++: parse Vite address
+			if (addrString.substr(0, 5) != "vite_")
 			{
-				serr() << "The address " << addrString << " is not prefixed with \"0x\"." << endl;
-				serr() << "Note that the address must be prefixed with \"0x\"." << endl;
+				serr() << "The address " << addrString << " is not prefixed with \"vite_\"." << endl;
+				serr() << "Note that the address must be prefixed with \"vite_\"." << endl;
 				return false;
 			}
 
-			if (addrString.length() != 40)
+			if (addrString.length() != 55)
 			{
-				serr() << "Invalid length for address for library \"" << libName << "\": " << addrString.length() << " instead of 40 characters." << endl;
+				serr() << "Invalid length for address for library \"" << libName << "\": " << addrString.length() << " instead of 55 characters." << endl;
 				return false;
 			}
-			if (!passesAddressChecksum(addrString, false))
+			if (!passesViteAddressChecksum(addrString))
 			{
 				serr() << "Invalid checksum on address for library \"" << libName << "\": " << addrString << endl;
-				serr() << "The correct checksum is " << getChecksummedAddress(addrString) << endl;
 				return false;
 			}
-			bytes binAddr = fromHex(addrString);
-			h160 address(binAddr, h160::AlignRight);
-			if (binAddr.size() > 20 || address == h160())
+			bytes binAddr = fromHex(getViteAddressHex(addrString));
+			h168 address(binAddr, h168::AlignRight);
+			if (binAddr.size() > 21 || address == h168())
 			{
 				serr() << "Invalid address for library \"" << libName << "\": " << addrString << endl;
 				return false;
@@ -1774,22 +1772,23 @@ bool CommandLineInterface::actOnInput()
 bool CommandLineInterface::link()
 {
 	// Map from how the libraries will be named inside the bytecode to their addresses.
-	map<string, h160> librariesReplacements;
-	int const placeholderSize = 40; // 20 bytes or 40 hex characters
+	map<string, h168> librariesReplacements;  // Solidity++: 168-bit address
+	int const placeholderSize = 42; // // Solidity++: 168-bit address, 21 bytes or 42 hex characters
 	for (auto const& library: m_libraries)
 	{
 		string const& name = library.first;
-		// Library placeholders are 40 hex digits (20 bytes) that start and end with '__'.
+		// Solidity++: 168-bit address
+		// Library placeholders are 42 hex digits (21 bytes) that start with '__' and end with '___'.
 		// This leaves 36 characters for the library identifier. The identifier used to
 		// be just the cropped or '_'-padded library name, but this changed to
 		// the cropped hex representation of the hash of the library name.
 		// We support both ways of linking here.
-		librariesReplacements["__" + evmasm::LinkerObject::libraryPlaceholder(name) + "__"] = library.second;
+		librariesReplacements["__" + evmasm::LinkerObject::libraryPlaceholder(name) + "____"] = library.second;
 
 		string replacement = "__";
-		for (size_t i = 0; i < placeholderSize - 4; ++i)
+		for (size_t i = 0; i < placeholderSize - 6; ++i)
 			replacement.push_back(i < name.size() ? name[i] : '_');
-		replacement += "__";
+		replacement += "____";
 		librariesReplacements[replacement] = library.second;
 	}
 	for (auto& src: m_sourceCodes)
