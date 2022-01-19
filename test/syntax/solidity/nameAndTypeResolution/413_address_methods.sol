@@ -1,12 +1,11 @@
 contract C {
     function f() public {
         address payable addr;
-        uint balance = addr.balance;
+        uint b = addr.balance;
         (bool callSuc,) = addr.call("");
         (bool delegatecallSuc,) = addr.delegatecall("");
-        bool sendRet = addr.send(1);
-        addr.transfer(1);
-        balance; callSuc; delegatecallSuc; sendRet;
+        addr.transfer("tti_5649544520544f4b454e6e40", 1);
+        b; callSuc; delegatecallSuc;
     }
 }
 // ----

@@ -15,10 +15,7 @@ contract C {
         assembly { function g() { pop(blockhash(20)) } }
     }
     function i() public {
-        assembly { pop(call(0, 1, 2, 3, 4, 5, 6)) }
-    }
-    function j() public {
-        assembly { pop(call(gas(), 1, 2, 3, 4, 5, 6)) }
+        assembly { call(0, 1, 2, 3, 4) }
     }
     function k() public view {
         assembly { pop(balance(0)) }

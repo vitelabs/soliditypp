@@ -12,3 +12,7 @@ contract C {
 	}
 }
 // ----
+// TypeError 100201: (112-127): Cannot set option "gas" in Solidity++. Valid options are "token" and "value".
+// TypeError 100201: (131-152): Cannot set option "gas" in Solidity++. Valid options are "token" and "value".
+// TypeError 100201: (156-179): Cannot set option "gas" in Solidity++. Valid options are "token" and "value".
+// TypeError 100201: (237-252): Cannot set option "gas" in Solidity++. Valid options are "token" and "value".

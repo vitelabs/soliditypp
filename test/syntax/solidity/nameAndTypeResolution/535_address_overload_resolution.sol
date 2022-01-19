@@ -17,4 +17,5 @@ contract D {
     }
 }
 // ----
+// Warning 2319: (17-134): This declaration shadows a builtin symbol.
 // Warning 2018: (17-134): Function state mutability can be restricted to view

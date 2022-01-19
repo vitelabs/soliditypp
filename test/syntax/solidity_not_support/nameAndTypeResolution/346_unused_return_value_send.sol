@@ -4,4 +4,4 @@ contract test {
     }
 }
 // ----
-// Warning 5878: (50-80): Failure condition of 'send' ignored. Consider using 'transfer' instead.
+// ParserError 2314: (73-77): Expected identifier but got 'send'
