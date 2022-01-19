@@ -32,7 +32,7 @@ bool Literal::looksLikeViteAddress() const
 	if (subDenomination() != SubDenomination::None)
 		return false;
 
-	return int(value().length()) == 55;
+	return true;
 }
 
 // Solidity++:
@@ -44,7 +44,7 @@ bool Literal::looksLikeViteTokenId() const
 	if (subDenomination() != SubDenomination::None)
 		return false;
 
-	return int(value().length()) == 28;
+	return true;
 }
 
 // Solidity++: check vite address checksum

@@ -6,7 +6,6 @@ contract C {
 		this.f{gas: 42}();
 	}
 }
-// ====
-// EVMVersion: >=byzantium
+// ----
 // TypeError 100201: (207-228): Cannot set option "gas" in Solidity++. Valid options are "token" and "value".
 // TypeError 100201: (236-251): Cannot set option "gas" in Solidity++. Valid options are "token" and "value".

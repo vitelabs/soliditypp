@@ -582,8 +582,12 @@ void SolidityppTypeChecker::endVisit(Literal const& _literal)
 		_literal.annotation().type = TypeProvider::address();
 
 		string msg;
-
-		if (!_literal.passesViteAddressChecksum())
+		if (_literal.value().length() != 55)
+            msg =
+                "This looks like a Vite address but is not exactly 42 hex digits. It is " +
+                to_string(_literal.value().length() - 5) +
+                " hex digits.";
+		else if (!_literal.passesViteAddressChecksum())
 		{
 			msg = "This looks like a Vite address but has an invalid checksum.";
 		}
@@ -601,8 +605,12 @@ void SolidityppTypeChecker::endVisit(Literal const& _literal)
 		_literal.annotation().type = TypeProvider::viteTokenId();
 
 		string msg;
-
-		if (!_literal.passesViteTokenIdChecksum())
+		if (_literal.value().length() != 28)
+		    msg =
+                "This looks like a Vite Token Id but is not exactly 24 hex digits. It is " +
+                to_string(_literal.value().length() - 4) +
+                " hex digits.";
+		else if (!_literal.passesViteTokenIdChecksum())
 		{
 			msg = "This looks like a Vite Token Id but has an invalid checksum.";
 		}

@@ -20,9 +20,11 @@ BOOST_AUTO_TEST_CASE(literal_looks_like_vite_address)
 	// valid vite address
 	BOOST_CHECK(Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("vite_010203040506070809080706050403020102030412227c8b71")).looksLikeViteAddress());
 	// invalid: too short
-	BOOST_CHECK(!Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("vite_0102030405060708090807060504030201020304122")).looksLikeViteAddress());
+	BOOST_CHECK(Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("vite_0102030405060708090807060504030201020304122")).looksLikeViteAddress());
+	// invalid: empty hex
+	BOOST_CHECK(Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("vite_")).looksLikeViteAddress());
 	// invalid: too long
-	BOOST_CHECK(!Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("vite_010203040506070809080706050403020102030412227c8b71000000")).looksLikeViteAddress());
+	BOOST_CHECK(Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("vite_010203040506070809080706050403020102030412227c8b71000000")).looksLikeViteAddress());
 	// invalid: bad prefix
 	BOOST_CHECK(!Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("0x010203040506070809080706050403020102030412227c8b71")).looksLikeViteAddress());
 	BOOST_CHECK(!Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("010203040506070809080706050403020102030412227c8b71")).looksLikeViteAddress());
@@ -35,9 +37,11 @@ BOOST_AUTO_TEST_CASE(literal_looks_like_vite_token_id)
 	// valid vite token id
 	BOOST_CHECK(Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("tti_5649544520544f4b454e6e40")).looksLikeViteTokenId());
 	// invalid: too short
-	BOOST_CHECK(!Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("tti_5649544520544f4b454e")).looksLikeViteTokenId());
+	BOOST_CHECK(Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("tti_5649544520544f4b454e")).looksLikeViteTokenId());
+	// invalid: empty hex
+	BOOST_CHECK(Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("tti_")).looksLikeViteTokenId());
 	// invalid: too long
-	BOOST_CHECK(!Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("tti_5649544520544f4b454e6e400000")).looksLikeViteTokenId());
+	BOOST_CHECK(Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("tti_5649544520544f4b454e6e400000")).looksLikeViteTokenId());
 	// invalid: bad prefix
 	BOOST_CHECK(!Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("0x5649544520544f4b454e6e40")).looksLikeViteTokenId());
 	BOOST_CHECK(!Literal(1, sourceLocation, Token::StringLiteral, make_shared<ASTString>("5649544520544f4b454e6e40")).looksLikeViteTokenId());
