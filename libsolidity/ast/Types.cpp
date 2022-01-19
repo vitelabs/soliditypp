@@ -3897,7 +3897,7 @@ MemberList::MemberMap MagicType::nativeMembers(ASTNode const*) const
 			{"value", TypeProvider::uint256()},
 			{"data", TypeProvider::array(DataLocation::CallData)},
 			{"sig", TypeProvider::fixedBytes(4)},
-			{"sender", TypeProvider::payableAddress()},  // Solidity++: sender is a payable address
+			{"sender", TypeProvider::address()},
 			{"tokenid", TypeProvider::viteTokenId()}, // Solidity++: get tx's transfer token id
 			{"amount", TypeProvider::uint256()}  // Solidity++: get tx's transfer amount
 		});
