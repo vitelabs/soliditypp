@@ -1,7 +1,7 @@
 pragma soliditypp >=0.8.0;
 contract Test {
-	tokenId token;
+	vitetoken token;
     function test() external {
-		token = msg.tokenid;
+		token = msg.token;
 	}
 }

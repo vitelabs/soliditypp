@@ -2,7 +2,7 @@
 pragma soliditypp >=0.8.0;
 
 contract TokenIdInFunction {
-    function f(tokenId t) internal pure returns (tokenId) {
+    function f(vitetoken t) internal pure returns (vitetoken) {
         return t;
     }
 }

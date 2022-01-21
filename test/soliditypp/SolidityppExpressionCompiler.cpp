@@ -335,7 +335,7 @@ BOOST_AUTO_TEST_CASE(blake2b)
  	char const* sourceCode = R"(
  		contract test {
  			function f() external {
- 	            tokenId t = msg.tokenid;
+ 	            vitetoken t = msg.token;
  			}
  		}
  	)";
@@ -351,7 +351,7 @@ BOOST_AUTO_TEST_CASE(msg_amount)
     char const* sourceCode = R"(
         contract test {
             function f() external {
-                uint a = msg.amount;
+                uint a = msg.value;
             }
         }
     )";
@@ -366,7 +366,7 @@ BOOST_AUTO_TEST_CASE(msg_amount)
  {
  	char const* sourceCode = R"(
  		contract test {
- 			function f(tokenId token) public {
+ 			function f(vitetoken token) public {
  				balance(token);
  			}
  		}

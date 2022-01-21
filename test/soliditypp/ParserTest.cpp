@@ -77,7 +77,7 @@ namespace solidity::frontend::test::soliditypp
     {
         char const* text = R"(
             contract Test {
-                tokenId token = "tti_5649544520544f4b454e6e40";
+                vitetoken token = "tti_5649544520544f4b454e6e40";
             }
         )";
         BOOST_CHECK(successParse(text));

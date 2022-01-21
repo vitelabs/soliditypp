@@ -1800,9 +1800,9 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 		}
 		
 		// Solidity++:
-		else if (member == "tokenid")
+		else if (member == "token")
 			m_context << Instruction::TOKENID;
-		else if (member == "amount")
+		else if (member == "value")
 			m_context << Instruction::CALLVALUE;
 
 		else
@@ -2644,7 +2644,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	{
 	    m_context.appendDebugInfo("value to send");
 		m_context << dupInstruction(m_context.baseToCurrentStackOffset(valueStackPos));
-		m_context.appendDebugInfo("tokenId");
+		m_context.appendDebugInfo("vite token");
 		m_context << dupInstruction(m_context.baseToCurrentStackOffset(tokenStackPos));  // Solidity++: push tokenId
 	}
 	else if (_functionType.valueSet() && !_functionType.tokenSet())

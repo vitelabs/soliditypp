@@ -197,7 +197,7 @@ namespace solidity::langutil
 	T(BytesM, "bytesM", 0)                                             \
 	T(FixedMxN, "fixedMxN", 0)                                         \
 	T(UFixedMxN, "ufixedMxN", 0)                                       \
-	K(TokenId, "tokenId", 0) /* Solidity++: Vite token id */           \
+	K(TokenId, "vitetoken", 0) /* Solidity++: Vite token id */           \
 	T(TypesEnd, nullptr, 0) /* used as type enum end marker */         \
 	\
 	/* Literals */                                                     \

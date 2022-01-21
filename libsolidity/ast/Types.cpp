@@ -458,7 +458,7 @@ MemberList::MemberMap AddressType::nativeMembers(ASTNode const*) const
 		members.emplace_back(MemberList::Member{"send", TypeProvider::function(strings{"uint"}, strings{"bool"}, FunctionType::Kind::Send, false, StateMutability::NonPayable)});
 		// members.emplace_back(MemberList::Member{"send", TypeProvider::function(strings{"message"}, strings{}, FunctionType::Kind::Send, false, StateMutability::Payable)});
         // Solidity++: redefine address.transfer()
-		members.emplace_back(MemberList::Member{"transfer", TypeProvider::function(strings{"tokenId", "uint"}, strings(), FunctionType::Kind::Transfer, false, StateMutability::NonPayable)});
+		members.emplace_back(MemberList::Member{"transfer", TypeProvider::function(strings{"vitetoken", "uint"}, strings(), FunctionType::Kind::Transfer, false, StateMutability::NonPayable)});
 	}
 	return members;
 }
@@ -2907,7 +2907,7 @@ string FunctionType::richIdentifier() const
 	if (m_valueSet)
 		id += "value";
 	if (m_tokenSet)  // Solidity++
-	    id += "tti";
+	    id += "token";
 	if (m_saltSet)
 		id += "salt";
 	if (bound())
@@ -3111,7 +3111,7 @@ vector<tuple<string, TypePointer>> FunctionType::makeStackItems() const
 	if (m_valueSet)
 		slots.emplace_back("value", TypeProvider::uint256());
 	if (m_tokenSet)
-	    slots.emplace_back("tti", TypeProvider::viteTokenId());  // Solidity++
+	    slots.emplace_back("token", TypeProvider::viteTokenId());  // Solidity++
 	if (m_saltSet)
 		slots.emplace_back("salt", TypeProvider::fixedBytes(32));
 	if (bound())
@@ -3898,8 +3898,7 @@ MemberList::MemberMap MagicType::nativeMembers(ASTNode const*) const
 			{"data", TypeProvider::array(DataLocation::CallData)},
 			{"sig", TypeProvider::fixedBytes(4)},
 			{"sender", TypeProvider::address()},
-			{"tokenid", TypeProvider::viteTokenId()}, // Solidity++: get tx's transfer token id
-			{"amount", TypeProvider::uint256()}  // Solidity++: get tx's transfer amount
+			{"token", TypeProvider::viteTokenId()}, // Solidity++: get tx's transfer token id
 		});
 	case Kind::Transaction:
 		return MemberList::MemberMap({

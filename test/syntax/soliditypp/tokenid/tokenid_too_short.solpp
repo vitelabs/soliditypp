@@ -2,7 +2,7 @@
 pragma soliditypp >=0.8.0;
 
 contract BadTokenIdChecksum {
-    tokenId t = "tti_5649544520544f4b454e00";
+    vitetoken t = "tti_5649544520544f4b454e00";
 }
 // ----
-// SyntaxError 9429: (110-138): This looks like a Vite Token Id but is not exactly 24 hex digits. It is 22 hex digits.
+// SyntaxError 9429: (112-140): This looks like a Vite Token Id but is not exactly 24 hex digits. It is 22 hex digits.

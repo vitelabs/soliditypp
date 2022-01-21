@@ -1,7 +1,7 @@
 pragma soliditypp >=0.8.0;
 contract Test {
 	uint b;
-    function test(tokenId token) external {
+    function test(vitetoken token) external {
 		b = balance(token);
 	}
 }

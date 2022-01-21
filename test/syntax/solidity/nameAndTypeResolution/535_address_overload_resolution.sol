@@ -3,7 +3,7 @@ contract C {
         this.balance; // to avoid pureness warning
         return 1;
     }
-    function transfer(tokenId _token, uint amount) public {
+    function transfer(vitetoken _token, uint amount) public {
         payable(this).transfer(_token, amount); // to avoid pureness warning
     }
     receive() payable external {

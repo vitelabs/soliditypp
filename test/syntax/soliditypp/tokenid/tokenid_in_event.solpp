@@ -2,10 +2,10 @@ pragma soliditypp >=0.8.0;
 
 contract TokenIdInEvent {
 
-    event E(tokenId token);
+    event E(vitetoken token);
 
     function f() external {
-		tokenId t = "tti_5649544520544f4b454e6e40";
+		vitetoken t = "tti_5649544520544f4b454e6e40";
         emit E(t);
 	}
 }
