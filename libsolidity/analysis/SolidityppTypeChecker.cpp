@@ -563,6 +563,16 @@ bool SolidityppTypeChecker::visit(FunctionCallOptions const& _functionCallOption
 // Solidity++:
 bool SolidityppTypeChecker::visit(AwaitExpression const& _awaitExpression)
 {
+    // experimental check
+    if (!m_currentSourceUnit->annotation().experimentalFeatures.count(ExperimentalFeature::Await))
+    {
+        m_errorReporter.syntaxError(
+            100201_error,
+            _awaitExpression.location(),
+            "This is an experimental syntax that can be enabled by adding an experimental pragma."
+        );
+    }
+
     auto call = dynamic_cast<FunctionCall const*>(&_awaitExpression.expression());
     solAssert(call, "fail to convert function call in await expression: " + _awaitExpression.location().text());
 

@@ -6,6 +6,7 @@ contract A {
 }
 ==== Source: B ====
 pragma soliditypp >=0.8.0;
+pragma experimental Await;
 import "A";
 
 contract B {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma soliditypp >=0.8.0;
+pragma experimental Await;
 
 contract Callee {
     function f(uint a) external pure returns(uint x) {

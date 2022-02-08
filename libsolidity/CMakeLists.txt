@@ -63,7 +63,7 @@ set(sources
 	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonImporter.cpp
 	${ORIGINAL_SOURCE_DIR}/ast/ASTJsonImporter.h
 	ast/ASTVisitor.h
-	${ORIGINAL_SOURCE_DIR}/ast/ExperimentalFeatures.h
+	ast/ExperimentalFeatures.h
 	ast/Types.cpp
 	ast/Types.h
 	ast/TypeProvider.cpp
