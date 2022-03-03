@@ -1,9 +1,0 @@
-// SPDX-License-Identifier: GPL-3.0
-pragma soliditypp >=0.4.2;
-
-contract ExternalSyncFunctionContract {
-    function f() external {
-    }
-}
-// ----
-TypeError 100304: (108-137): "external" and "public" functions must be async.

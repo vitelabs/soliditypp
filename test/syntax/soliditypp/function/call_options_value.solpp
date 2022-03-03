@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma soliditypp >=0.8.0;
+
+contract A {
+    function f(uint a) external payable returns(uint) {
+        return a + 1;
+    }
+}
+
+contract B {
+    A a;
+    constructor(address payable addr) {
+        a = A(addr);
+    }
+
+    function test() external {
+        await a.f{value: 1e18}(1);
+    }
+}
+// ----

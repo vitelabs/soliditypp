@@ -13,11 +13,10 @@ BOOST_AUTO_TEST_SUITE(SolidityppScannerTest)
 
 BOOST_AUTO_TEST_CASE(soliditypp_keywords)
 {
-	string keywords = "message onMessage getter";
+	string keywords = "async await";
 	Scanner scanner(CharStream(keywords, ""));
-	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Message);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::OnMessage);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Getter);
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Async);
+	BOOST_CHECK_EQUAL(scanner.next(), Token::Await);
 	BOOST_CHECK_EQUAL(scanner.next(), Token::EOS);
 }
 

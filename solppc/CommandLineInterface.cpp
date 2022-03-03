@@ -12,7 +12,7 @@
 
 #include <libsolidity/interface/Version.h>
 #include <libsolidity/parsing/Parser.h>
-#include <libsolidity/ast/ASTJsonConverter.h>
+#include <libsolidity/ast/SolidityppASTJsonConverter.h>
 #include <libsolidity/ast/ASTJsonImporter.h>
 #include <libsolidity/analysis/NameAndTypeResolver.h>
 #include <libsolidity/interface/CompilerStack.h>
@@ -346,19 +346,6 @@ void CommandLineInterface::handleBinary(string const& _contract)
 			sout() << objectWithLinkRefsHex(m_compiler->object(_contract)) << endl;
 		}
 	}
-	// Solidity++: output offchain binary
-	// TODO: add offchain args
-	if (m_args.count(g_argBinary))
-	{
-		if (m_args.count(g_argOutputDir))
-			createFile(m_compiler->filesystemFriendlyName(_contract) + "_offchain.bin", objectWithLinkRefsHex(m_compiler->offchainObject(_contract)));
-		else
-		{
-			sout() << "OffChain Binary:" << endl;
-			sout() << objectWithLinkRefsHex(m_compiler->offchainObject(_contract)) << endl;
-		}
-	}
-
 	if (m_args.count(g_argBinaryRuntime))
 	{
 		if (m_args.count(g_argOutputDir))
@@ -703,29 +690,27 @@ bool CommandLineInterface::parseLibraryOption(string const& _input)
 				return false;
 			}
 
-			if (addrString.substr(0, 2) == "0x")
-				addrString = addrString.substr(2);
-			else
+			// Solidity++: parse Vite address
+			if (addrString.substr(0, 5) != "vite_")
 			{
-				serr() << "The address " << addrString << " is not prefixed with \"0x\"." << endl;
-				serr() << "Note that the address must be prefixed with \"0x\"." << endl;
+				serr() << "The address " << addrString << " is not prefixed with \"vite_\"." << endl;
+				serr() << "Note that the address must be prefixed with \"vite_\"." << endl;
 				return false;
 			}
 
-			if (addrString.length() != 40)
+			if (addrString.length() != 55)
 			{
-				serr() << "Invalid length for address for library \"" << libName << "\": " << addrString.length() << " instead of 40 characters." << endl;
+				serr() << "Invalid length for address for library \"" << libName << "\": " << addrString.length() << " instead of 55 characters." << endl;
 				return false;
 			}
-			if (!passesAddressChecksum(addrString, false))
+			if (!passesViteAddressChecksum(addrString))
 			{
 				serr() << "Invalid checksum on address for library \"" << libName << "\": " << addrString << endl;
-				serr() << "The correct checksum is " << getChecksummedAddress(addrString) << endl;
 				return false;
 			}
-			bytes binAddr = fromHex(addrString);
-			h160 address(binAddr, h160::AlignRight);
-			if (binAddr.size() > 20 || address == h160())
+			bytes binAddr = fromHex(getViteAddressHex(addrString));
+			h168 address(binAddr, h168::AlignRight);
+			if (binAddr.size() > 21 || address == h168())
 			{
 				serr() << "Invalid address for library \"" << libName << "\": " << addrString << endl;
 				return false;
@@ -1725,7 +1710,7 @@ void CommandLineInterface::handleCombinedJSON()
 		output[g_strSources] = Json::Value(Json::objectValue);
 		for (auto const& sourceCode: m_sourceCodes)
 		{
-			ASTJsonConverter converter(m_compiler->state(), m_compiler->sourceIndices());
+			SolidityppASTJsonConverter converter(m_compiler->state(), m_compiler->sourceIndices());
 			output[g_strSources][sourceCode.first] = Json::Value(Json::objectValue);
 			output[g_strSources][sourceCode.first]["AST"] = converter.toJson(m_compiler->ast(sourceCode.first));
 		}
@@ -1755,7 +1740,7 @@ void CommandLineInterface::handleAst()
 		{
 			stringstream data;
 			string postfix = "";
-			ASTJsonConverter(m_compiler->state(), m_compiler->sourceIndices()).print(data, m_compiler->ast(sourceCode.first));
+			SolidityppASTJsonConverter(m_compiler->state(), m_compiler->sourceIndices()).print(data, m_compiler->ast(sourceCode.first));
 			postfix += "_json";
 			boost::filesystem::path path(sourceCode.first);
 			createFile(path.filename().string() + postfix + ".ast", data.str());
@@ -1767,7 +1752,7 @@ void CommandLineInterface::handleAst()
 		for (auto const& sourceCode: m_sourceCodes)
 		{
 			sout() << endl << "======= " << sourceCode.first << " =======" << endl;
-			ASTJsonConverter(m_compiler->state(), m_compiler->sourceIndices()).print(sout(), m_compiler->ast(sourceCode.first));
+			SolidityppASTJsonConverter(m_compiler->state(), m_compiler->sourceIndices()).print(sout(), m_compiler->ast(sourceCode.first));
 		}
 	}
 }
@@ -1787,22 +1772,23 @@ bool CommandLineInterface::actOnInput()
 bool CommandLineInterface::link()
 {
 	// Map from how the libraries will be named inside the bytecode to their addresses.
-	map<string, h160> librariesReplacements;
-	int const placeholderSize = 40; // 20 bytes or 40 hex characters
+	map<string, h168> librariesReplacements;  // Solidity++: 168-bit address
+	int const placeholderSize = 42; // // Solidity++: 168-bit address, 21 bytes or 42 hex characters
 	for (auto const& library: m_libraries)
 	{
 		string const& name = library.first;
-		// Library placeholders are 40 hex digits (20 bytes) that start and end with '__'.
+		// Solidity++: 168-bit address
+		// Library placeholders are 42 hex digits (21 bytes) that start with '__' and end with '___'.
 		// This leaves 36 characters for the library identifier. The identifier used to
 		// be just the cropped or '_'-padded library name, but this changed to
 		// the cropped hex representation of the hash of the library name.
 		// We support both ways of linking here.
-		librariesReplacements["__" + evmasm::LinkerObject::libraryPlaceholder(name) + "__"] = library.second;
+		librariesReplacements["__" + evmasm::LinkerObject::libraryPlaceholder(name) + "____"] = library.second;
 
 		string replacement = "__";
-		for (size_t i = 0; i < placeholderSize - 4; ++i)
+		for (size_t i = 0; i < placeholderSize - 6; ++i)
 			replacement.push_back(i < name.size() ? name[i] : '_');
-		replacement += "__";
+		replacement += "____";
 		librariesReplacements[replacement] = library.second;
 	}
 	for (auto& src: m_sourceCodes)
@@ -2050,28 +2036,22 @@ void CommandLineInterface::outputCompilationResults()
 		if (m_args.count(g_argAsm) || m_args.count(g_argAsmJson))
 		{
 			string ret;
-			// Solidity++: offchain assembly
-			string ret_offchain;
 			if (m_args.count(g_argAsmJson))
 			{
 				ret = jsonPrettyPrint(removeNullMembers(m_compiler->assemblyJSON(contract)));
-				ret_offchain = jsonPrettyPrint(removeNullMembers(m_compiler->offchainAssemblyJSON(contract)));
 			}
 			else
 			{
 				ret = m_compiler->assemblyString(contract, m_sourceCodes);
-				ret_offchain = m_compiler->offchainAssemblyString(contract, m_sourceCodes);
 			}
 
 			if (m_args.count(g_argOutputDir))
 			{
 				createFile(m_compiler->filesystemFriendlyName(contract) + (m_args.count(g_argAsmJson) ? "_evm.json" : ".evm"), ret);
-				createFile(m_compiler->filesystemFriendlyName(contract) + (m_args.count(g_argAsmJson) ? "_evm_offchain.json" : "_offchain.evm"), ret_offchain);
 			}
 			else
 			{
 				sout() << "EVM assembly:" << endl << "=======" << endl << ret << endl;
-				sout() << "=======" << endl << "Offchain assembly:" << endl << "=======" << endl << ret_offchain << endl;
 			}
 		}
 

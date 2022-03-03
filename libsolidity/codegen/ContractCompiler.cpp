@@ -100,43 +100,11 @@ void ContractCompiler::compileContract(
 	    debug("  - " + entry.toAssemblyText(m_context.assembly()) + functionType->toString(true));
 	}
 
-
 	// Solidity++: Will append function selector after compiling await expressions
-	if (!_contract.isLibrary())  // Solidity++: Libraries don't have function selectors
-	{
-	    debug("Jump to function selector " + m_functionSelectorTag.toAssemblyText(m_context.assembly()));
-	    m_context.appendJumpTo(m_functionSelectorTag);
-	}
+    debug("Jump to function selector " + m_functionSelectorTag.toAssemblyText(m_context.assembly()));
+    m_context.appendJumpTo(m_functionSelectorTag);
 
 	debug("Compiled.");
-}
-
-// Solidity++: compile offchain functions
-void ContractCompiler::compileOffchain(
-	ContractDefinition const& _contract,
-	map<ContractDefinition const*, shared_ptr<Compiler const>> const& _otherCompilers
-)
-{
-    debug("Compiling offchain functions...");
-	CompilerContext::LocationSetter locationSetter(m_context, _contract);
-
-	if (_contract.isLibrary())
-		// Check whether this is a call (true) or a delegatecall (false).
-		// This has to be the first code in the contract.
-		appendDelegatecallCheck();
-
-	initializeContext(_contract, _otherCompilers);
-	// This generates the dispatch function for externally visible functions
-	// and adds the function to the compilation queue. Additionally internal functions,
-	// which are referenced directly or indirectly will be added.
-	debug("Append offchain function selector");
-	appendFunctionSelector(_contract, true);
-
-	// Solidity++: We have to include copies of functions in both onchain and offchain context
-	debug("Append missing functions");
-	appendMissingFunctions();
-	m_context.appendYulUtilityFunctions(m_optimiserSettings);
-	debug("Offchain functions compiled.");
 }
 
 size_t ContractCompiler::compileConstructor(
@@ -269,6 +237,9 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 	appendMissingFunctions();
 	m_runtimeCompiler->appendMissingFunctions();
 
+	// Solidity++: Moved from compileContract()
+	m_runtimeCompiler->appendFunctionSelector(_contract);
+
 	// Solidity++: Moved from appendMissingFunctions()
 	m_runtimeCompiler->m_context.appendYulUtilityFunctions(m_optimiserSettings);
 	m_context.appendYulUtilityFunctions(m_optimiserSettings);
@@ -279,21 +250,25 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 	m_context.pushSubroutineSize(m_context.runtimeSub());
 	m_context.pushSubroutineOffset(m_context.runtimeSub());
 	// This code replaces the address added by appendDeployTimeAddress().
+	// Solidity++: use 168-bit address
 	m_context.appendInlineAssembly(
-		Whiskers(R"(
+	        Whiskers(R"(
 		{
-			// If code starts at 11, an mstore(0) writes to the full PUSH20 plus data
+			// If code starts at 10, an mstore(0) writes to the full PUSH21 plus data
 			// without the need for a shift.
-			let codepos := 11
+			let codepos := 10
 			codecopy(codepos, subOffset, subSize)
-			// Check that the first opcode is a PUSH20
-			if iszero(eq(0x73, byte(0, mload(codepos)))) {
+			// Check that the first opcode is a PUSH21
+			if iszero(eq(0x74, byte(0, mload(codepos)))) {
 				mstore(0, <panicSig>)
 				mstore(4, 0)
 				revert(0, 0x24)
 			}
+            // code in memory: [10 bytes] [PUSH21] [00..... 21 bytes]
 			mstore(0, address())
-			mstore8(codepos, 0x73)
+            // code in memory: [10 bytes] [00] [address 21 bytes]
+			mstore8(codepos, 0x74)
+            // code in memory: [10 bytes] [PUSH21] [address 21 bytes]
 			return(codepos, subSize)
 		}
 		)")("panicSig", util::selectorFromSignature("Panic(uint256)").str()).render(),
@@ -358,7 +333,7 @@ void ContractCompiler::appendConstructor(FunctionDefinition const& _constructor)
 void ContractCompiler::appendDelegatecallCheck()
 {
 	// Special constant that will be replaced by the address at deploy time.
-	// At compilation time, this is just "PUSH20 00...000".
+	// At compilation time, this is just "PUSH21 00...000".
 	m_context.appendDeployTimeAddress();
 	m_context << Instruction::ADDRESS << Instruction::EQ;
 	// The result on the stack is
@@ -440,9 +415,9 @@ bool hasPayableFunctions(ContractDefinition const& _contract)
 
 }
 
-void ContractCompiler::appendFunctionSelector(ContractDefinition const& _contract, bool _isOffchain)
+void ContractCompiler::appendFunctionSelector(ContractDefinition const& _contract)
 {
-	map<FixedHash<4>, FunctionTypePointer> interfaceFunctions = _isOffchain ? _contract.offchainFunctions() : _contract.interfaceFunctions();
+	map<FixedHash<4>, FunctionTypePointer> interfaceFunctions = _contract.interfaceFunctions();
 	map<FixedHash<4>, evmasm::AssemblyItem const> callDataUnpackerEntryPoints;
 
 	if (_contract.isLibrary())
@@ -450,11 +425,9 @@ void ContractCompiler::appendFunctionSelector(ContractDefinition const& _contrac
 		solAssert(m_context.stackHeight() == 1, "CALL / DELEGATECALL flag expected.");
 	}
 
-	if (!_isOffchain && !_contract.isLibrary())  // Solidity++: Libraries don't have function selectors
-	{
-	    debug("Append function selector " + m_functionSelectorTag.toAssemblyText(m_context.assembly()));
-	    m_context << m_functionSelectorTag;
-	}
+	// Solidity++: Add tag
+    debug("Append function selector " + m_functionSelectorTag.toAssemblyText(m_context.assembly()));
+    m_context << m_functionSelectorTag;
 
 	FunctionDefinition const* fallback = _contract.fallbackFunction();
 	solAssert(!_contract.isLibrary() || !fallback, "Libraries can't have fallback functions");
@@ -556,6 +529,7 @@ void ContractCompiler::appendFunctionSelector(ContractDefinition const& _contrac
     // Calldata unpacker of interface functions
 	for (auto const& it: interfaceFunctions)
 	{
+		m_context.setStackOffset(1);
 		FunctionTypePointer const& functionType = it.second;
 		solAssert(functionType->hasDeclaration(), "");
 		CompilerContext::LocationSetter locationSetter(m_context, functionType->declaration());
@@ -570,7 +544,7 @@ void ContractCompiler::appendFunctionSelector(ContractDefinition const& _contrac
 			m_context << dupInstruction(2);
 			m_context.appendConditionalRevert(false, "Non-view function of library called without DELEGATECALL");
 		}
-
+		m_context.setStackOffset(0);
 		// We have to allow this for libraries, because value of the previous
 		// call is still visible in the delegatecall.
 		if (!functionType->isPayable() && !_contract.isLibrary() && needToAddCallvalueCheck)
@@ -708,7 +682,7 @@ bool ContractCompiler::visit(FunctionDefinition const& _function)
 	m_context.appendDebugInfo("Add parameters");
 	for (ASTPointer<VariableDeclaration> const& variable: _function.parameters())
 	{
-	    debug("    - Add parameter: " + variable->toString());
+	    debug("    - Add parameter: " + variable->name());
 		m_context.addVariable(*variable, parametersSize);
 		parametersSize -= variable->annotation().type->sizeOnStack();
 	}
@@ -1387,18 +1361,6 @@ bool ContractCompiler::visit(EmitStatement const& _emit)
 	return false;
 }
 
-// Solidity++:
-bool ContractCompiler::visit(SendStatement const& _send)
-{
-    CompilerContext::LocationSetter locationSetter(m_context, _send);
-    StackHeightChecker checker(m_context, "SendStatement");
-    compileExpression(_send.address());
-    CompilerUtils(m_context).convertType(*_send.address().annotation().type, IntegerType(168), true);
-    compileExpression(_send.expression());
-    checker.check();
-    return false;
-}
-
 bool ContractCompiler::visit(VariableDeclarationStatement const& _variableDeclarationStatement)
 {
 	CompilerContext::LocationSetter locationSetter(m_context, _variableDeclarationStatement);
@@ -1486,6 +1448,8 @@ void ContractCompiler::endVisit(Block const& _block)
 void ContractCompiler::appendMissingFunctions()
 {
     debug("Append missing functions");
+    // Solidity++: save original stack height
+    auto stackHeight = m_context.stackHeight();
 	while (Declaration const* function = m_context.nextFunctionToCompile())
 	{
 	    debug("  - " + function->name());
@@ -1496,12 +1460,14 @@ void ContractCompiler::appendMissingFunctions()
 	m_context.appendMissingLowLevelFunctions();
 	// Solidity++: append Yul functions after appending function selector
     //	m_context.appendYulUtilityFunctions(m_optimiserSettings);
+    // Solidity++: restore original stack height
+    m_context.setStackOffset((int)stackHeight);
 }
 
 void ContractCompiler::appendModifierOrFunctionCode()
 {
 	solAssert(m_currentFunction, "");
-	auto debugInfo = "ContractCompiler::appendModifierOrFunctionCode() for " + m_currentFunction->externalSignature();
+	auto debugInfo = "ContractCompiler::appendModifierOrFunctionCode() for " + m_currentFunction->name();
 	debug(debugInfo);
 	m_context.appendDebugInfo(debugInfo);
 	unsigned stackSurplus = 0;
@@ -1563,11 +1529,11 @@ void ContractCompiler::appendModifierOrFunctionCode()
 		bool coderV2Outside = m_context.useABICoderV2();
 		m_context.setUseABICoderV2(*codeBlock->sourceUnit().annotation().useABICoderV2);
 
-		string desc = "return tag of " + toString(m_currentFunction->externalSignature());
+		string desc = "return tag of " + toString(m_currentFunction->name());
 		m_returnTags.emplace_back(m_context.newTag(desc), m_context.stackHeight());
 
 		// Compile function body
-		m_context.appendDebugInfo("start of code block of " + m_currentFunction->externalSignature());
+		m_context.appendDebugInfo("start of code block of " + m_currentFunction->name());
 
 		codeBlock->accept(*this);
 

@@ -67,7 +67,7 @@ size_t AssemblyItem::bytesRequired(size_t _addressLength) const
 		return 1 + _addressLength;
 	case PushLibraryAddress:
 	case PushDeployTimeAddress:
-		return 1 + 20;
+	    return 1 + 21;  // Solidity++: 168-bit address
 	case PushImmutable:
 		return 1 + 32;
 	case AssignImmutable:

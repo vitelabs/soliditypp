@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma soliditypp >=0.4.2;
+pragma soliditypp >=0.8.0;
 
 contract BadTokenIdChecksum {
-    tokenId t = "tti_5649544520544f4b454e0000";
+    vitetoken t = "tti_5649544520544f4b454e0000";
 }
 // ----
-// SyntaxError 9429: (110-140): This looks like a Vite Token Id but has an invalid checksum.
+// SyntaxError 9429: (112-142): This looks like a Vite Token Id but has an invalid checksum.

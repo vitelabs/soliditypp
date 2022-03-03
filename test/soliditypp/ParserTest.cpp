@@ -50,37 +50,13 @@ namespace solidity::frontend::test::soliditypp
 
     BOOST_AUTO_TEST_SUITE(SolidityppParserTest)
 
-    BOOST_AUTO_TEST_CASE(soliditypp_message_definition)
+    BOOST_AUTO_TEST_CASE(soliditypp_await)
     {
         char const* text = R"(
-            contract TestMessage {
-                message transfer(address indexed addr,uint256 amount);
-            }
-        )";
-        BOOST_CHECK(successParse(text));
-    }
-
-    BOOST_AUTO_TEST_CASE(soliditypp_onMessage_definition)
-    {
-        char const* text = R"(
-            contract TestOnMessage {
-                event transfer(address indexed addr,uint256 amount);
-                onMessage SayHello(address addr) payable {
-                    addr.transfer(msg.tokenid ,msg.amount);
-                    emit transfer(addr, msg.amount);
-                }
-            }
-        )";
-        BOOST_CHECK(successParse(text));
-    }
-
-    BOOST_AUTO_TEST_CASE(soliditypp_getter_definition)
-    {
-        char const* text = R"(
-            contract TestGetter {
-                uint magic = 0;
-                getter getMagic() returns(uint256) {
-                    return magic;
+            contract B {
+                A a;
+                function test() returns(uint256) {
+                    return await a.f();
                 }
             }
         )";
@@ -101,20 +77,7 @@ namespace solidity::frontend::test::soliditypp
     {
         char const* text = R"(
             contract Test {
-                tokenId token = "tti_5649544520544f4b454e6e40";
-            }
-        )";
-        BOOST_CHECK(successParse(text));
-    }
-
-    BOOST_AUTO_TEST_CASE(soliditypp_send_statement)
-    {
-        char const* text = R"(
-            contract TestOnMessage {
-                message transfer(address indexed addr,uint256 amount);
-                onMessage test(address addr) payable {
-                    send(addr, transfer(addr, msg.amount));
-                }
+                vitetoken token = "tti_5649544520544f4b454e6e40";
             }
         )";
         BOOST_CHECK(successParse(text));

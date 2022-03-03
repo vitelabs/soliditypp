@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma soliditypp >=0.4.2;
+pragma soliditypp >=0.8.0;
 
 contract GoodTokenId {
-    tokenId t1 = "tti_5649544520544f4b454e6e40";
-    tokenId t2 = tokenId("tti_5649544520544f4b454e6e40");
-    tokenId t3 = t1;
+    vitetoken t1 = "tti_5649544520544f4b454e6e40";
+    vitetoken t2 = vitetoken("tti_5649544520544f4b454e6e40");
+    vitetoken t3 = t1;
 }
 // ----

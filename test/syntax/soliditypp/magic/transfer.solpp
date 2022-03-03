@@ -1,8 +1,8 @@
-pragma soliditypp >=0.4.0;
+pragma soliditypp >=0.8.0;
 contract Test {
 	constructor() payable {}
 
-    onMessage test(address addr) {
+    function test(address payable addr) external {
 		addr.transfer("tti_564954455820434f494e69b5", 12);
 	}
 }

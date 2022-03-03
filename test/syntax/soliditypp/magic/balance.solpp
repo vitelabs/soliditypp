@@ -1,7 +1,7 @@
-pragma soliditypp >=0.4.0;
+pragma soliditypp >=0.8.0;
 contract Test {
 	uint b;
-    onMessage test(tokenId token) {
+    function test(vitetoken token) external {
 		b = balance(token);
 	}
 }

@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <libsolidity/ast/AST.h>
+#include <libsolidity/ast/SolidityppAST.h>
 #include <liblangutil/ParserBase.h>
 #include <liblangutil/EVMVersion.h>
 
@@ -38,6 +38,7 @@ private:
 	class ASTNodeFactory;
 
 	enum class VarDeclKind { FileLevel, State, Other };
+
 	struct VarDeclParserOptions
 	{
 		// This is actually not needed, but due to a defect in the C++ standard, we have to.
@@ -59,7 +60,6 @@ private:
 		ASTPointer<ParameterList> returnParameters;
 		Visibility visibility = Visibility::Default;
 		StateMutability stateMutability = StateMutability::NonPayable;
-        ExecutionBehavior executionBehavior = ExecutionBehavior::Sync;
 		std::vector<ASTPointer<ModifierInvocation>> modifiers;
 	};
 
@@ -77,11 +77,8 @@ private:
 	Visibility parseVisibilitySpecifier();
 	ASTPointer<OverrideSpecifier> parseOverrideSpecifier();
 	StateMutability parseStateMutability();
-
-    ExecutionBehavior parseExecutionBehavior(); // Solidity++
-
 	FunctionHeaderParserResult parseFunctionHeader(bool _isStateVariable);
-	ASTPointer<ASTNode> parseFunctionDefinition(bool _freeFunction = false);
+	ASTPointer<ASTNode> parseFunctionDefinition(bool _freeFunction = false, bool _library = false);
 	ASTPointer<StructDefinition> parseStructDefinition();
 	ASTPointer<EnumDefinition> parseEnumDefinition();
 	ASTPointer<EnumValue> parseEnumValue();
@@ -91,7 +88,6 @@ private:
 	);
 	ASTPointer<ModifierDefinition> parseModifierDefinition();
 	ASTPointer<EventDefinition> parseEventDefinition();
-	ASTPointer<MessageDefinition> parseMessageDefinition();
 	ASTPointer<UsingForDirective> parseUsingDirective();
 	ASTPointer<ModifierInvocation> parseModifierInvocation();
 	ASTPointer<Identifier> parseIdentifier();
@@ -115,8 +111,6 @@ private:
 	ASTPointer<WhileStatement> parseDoWhileStatement(ASTPointer<ASTString> const& _docString);
 	ASTPointer<ForStatement> parseForStatement(ASTPointer<ASTString> const& _docString);
 	ASTPointer<EmitStatement> parseEmitStatement(ASTPointer<ASTString> const& docString);
-	// Solidity++: parse send statement
-	ASTPointer<SendStatement> parseSendStatement(ASTPointer<ASTString> const& _docString);
 
 	/// A "simple statement" can be a variable declaration statement or an expression statement.
 	ASTPointer<Statement> parseSimpleStatement(ASTPointer<ASTString> const& _docString);
@@ -210,6 +204,9 @@ private:
 
 	/// Solidity++: parse vite token id
 	ASTPointer<Expression> parseViteTokenId();
+
+	/// Solidity++: the language of the source unit which is defined in pragma directive
+	SourceLanguage m_sourceLanguage;
 };
 
 }

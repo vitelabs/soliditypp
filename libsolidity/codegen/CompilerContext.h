@@ -194,6 +194,7 @@ public:
 	/// If the current EVM version does not support RETURNDATA, uses REVERT but does not forward
 	/// the data.
 	/// @param _message is an optional revert message used in debug mode
+	/// Solidity++: forward CALLDATA instead of RETURNDATA
 	CompilerContext& appendConditionalRevert(bool _forwardReturnData = false, std::string const& _message = "");
 	/// Appends a JUMP to a specific tag
 	CompilerContext& appendJumpTo(

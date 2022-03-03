@@ -1342,6 +1342,7 @@ void CompilerUtils::pushZeroPointer()
 
 void CompilerUtils::moveToStackVariable(VariableDeclaration const& _variable)
 {
+    m_context.appendDebugInfo("CompilerUtils::moveToStackVariable(" + _variable.name() + ")");
 	unsigned const stackPosition = m_context.baseToCurrentStackOffset(m_context.baseStackOffsetOfVariable(_variable));
 	unsigned const size = _variable.annotation().type->sizeOnStack();
 	solAssert(stackPosition >= size, "Variable size and position mismatch: stackPosition=" + to_string(stackPosition) + ", size=" +
@@ -1353,7 +1354,6 @@ void CompilerUtils::moveToStackVariable(VariableDeclaration const& _variable)
 			errinfo_sourceLocation(_variable.location()) <<
 			util::errinfo_comment("Stack too deep, try removing local variables.")
 		);
-	m_context.appendDebugInfo("CompilerUtils::moveToStackVariable(" + _variable.toString() + ")");
 	for (unsigned i = 0; i < size; ++i)
 		m_context << swapInstruction(stackPosition - size + 1) << Instruction::POP;
 }

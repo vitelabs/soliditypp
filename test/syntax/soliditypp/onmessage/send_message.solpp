@@ -1,9 +1,0 @@
-pragma soliditypp >=0.4.2;
-
-contract Test {
-   message test(uint a);
-
-   onMessage invoke()  {
-      send("vite_5cc2939e7a190a712f69333ca40d103b706d9e01a796d9314e", test(1));
-   }
-}

@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma soliditypp >=0.8.0;
+
+contract BadTokenIdChecksum {
+    vitetoken t = "tti_5649544520544f4b454e000000";
+}
+// ----
+// SyntaxError 9429: (112-144): This looks like a Vite Token Id but is not exactly 24 hex digits. It is 26 hex digits.

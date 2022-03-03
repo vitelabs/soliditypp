@@ -4,13 +4,13 @@
 #include <libsolidity/parsing/Parser.h>
 #include <libsolidity/analysis/NameAndTypeResolver.h>
 #include <libsolidity/analysis/Scoper.h>
-#include <libsolidity/analysis/SyntaxChecker.h>
+#include <libsolidity/analysis/SolidityppSyntaxChecker.h>
 #include <libsolidity/analysis/DeclarationTypeChecker.h>
 #include <libsolidity/codegen/CompilerContext.h>
 #include <libsolidity/codegen/ExpressionCompiler.h>
 #include <libsolidity/ast/AST.h>
 #include <libsolidity/ast/TypeProvider.h>
-#include <libsolidity/analysis/TypeChecker.h>
+#include <libsolidity/analysis/SolidityppTypeChecker.h>
 #include <liblangutil/ErrorReporter.h>
 #include <libevmasm/LinkerObject.h>
 #include <test/Common.h>
@@ -105,7 +105,7 @@ bytes compileFirstExpression(
 	ErrorReporter errorReporter(errors);
 	GlobalContext globalContext;
 	Scoper::assignScopes(*sourceUnit);
-	BOOST_REQUIRE(SyntaxChecker(errorReporter, false).checkSyntax(*sourceUnit));
+	BOOST_REQUIRE(SolidityppSyntaxChecker(errorReporter, false).checkSyntax(*sourceUnit));
 	NameAndTypeResolver resolver(globalContext, solidity::test::CommonOptions::get().evmVersion(), errorReporter);
 	resolver.registerDeclarations(*sourceUnit);
 	BOOST_REQUIRE_MESSAGE(resolver.resolveNamesAndTypes(*sourceUnit), "Resolving names failed");
@@ -310,7 +310,7 @@ BOOST_AUTO_TEST_CASE(blake2b)
 {
 	char const* sourceCode = R"(
 		contract test {
-			function f(bytes memory data) public async {
+			function f(bytes memory data) public {
 				blake2b(data);
 			}
         }
@@ -334,8 +334,8 @@ BOOST_AUTO_TEST_CASE(blake2b)
  {
  	char const* sourceCode = R"(
  		contract test {
- 			function f() external async {
- 	            tokenId t = msg.tokenid;
+ 			function f() external {
+ 	            vitetoken t = msg.token;
  			}
  		}
  	)";
@@ -350,8 +350,8 @@ BOOST_AUTO_TEST_CASE(msg_amount)
 {
     char const* sourceCode = R"(
         contract test {
-            function f() external async {
-                uint a = msg.amount;
+            function f() external {
+                uint a = msg.value;
             }
         }
     )";
@@ -366,7 +366,7 @@ BOOST_AUTO_TEST_CASE(msg_amount)
  {
  	char const* sourceCode = R"(
  		contract test {
- 			function f(tokenId token) public async {
+ 			function f(vitetoken token) public {
  				balance(token);
  			}
  		}

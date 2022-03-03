@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 
 #------------------------------------------------------------------------------
-# Bash script for building Solidity for emscripten.
+# This script builds the solidity binary using Emscripten.
+# Emscripten is a way to compile C/C++ to JavaScript.
+#
+# http://kripken.github.io/emscripten-site/
+#
+# First run install_dep.sh OUTSIDE of docker and then
+# run this script inside a docker image trzeci/emscripten
 #
 # The documentation for solidity is hosted at:
 #
-#     https://docs.soliditylang.org
+# https://docs.soliditylang.org
 #
 # ------------------------------------------------------------------------------
 # This file is part of solidity.
@@ -26,15 +32,41 @@
 # (c) 2016 solidity contributors.
 #------------------------------------------------------------------------------
 
-set -e
+set -ev
 
 if test -z "$1"; then
-    BUILD_DIR="emscripten_build"
+	BUILD_DIR="emscripten_build"
 else
-    BUILD_DIR="$1"
+	BUILD_DIR="$1"
 fi
 
-# solbuildpackpusher/solidity-buildpack-deps:emscripten-4
-docker run -v $(pwd):/root/project -w /root/project \
-    solbuildpackpusher/solidity-buildpack-deps@sha256:434719d8104cab47712dd1f56f255994d04eb65b802c0d382790071c1a0c074b \
-    ./scripts/ci/build_emscripten.sh $BUILD_DIR
+WORKSPACE=/root/project
+
+cd $WORKSPACE
+
+# shellcheck disable=SC2166
+echo -n >prerelease.txt
+
+if [ -n "$CIRCLE_SHA1" ]
+then
+	echo -n "$CIRCLE_SHA1" >commit_hash.txt
+fi
+
+mkdir -p $BUILD_DIR
+cd $BUILD_DIR
+emcmake cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBoost_USE_STATIC_LIBS=1 \
+  -DBoost_USE_STATIC_RUNTIME=1 \
+  -DTESTS=0 \
+  ..
+make -j3 solidity_BuildInfo.h soljson
+
+cd ..
+mkdir -p upload
+cp $BUILD_DIR/libsolc/soljson.js upload/
+cp $BUILD_DIR/libsolc/soljson.js ./
+
+OUTPUT_SIZE=`ls -la soljson.js`
+
+echo "Emscripten output size: $OUTPUT_SIZE"

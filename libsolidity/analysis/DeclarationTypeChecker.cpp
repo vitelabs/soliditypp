@@ -358,13 +358,6 @@ void DeclarationTypeChecker::endVisit(VariableDeclaration const& _variable)
 		typeLoc = DataLocation::Memory;
 	}
 
-	// Solidity++:
-	else if (_variable.isMessageParameter())
-    {
-        solAssert(varLoc == Location::Unspecified, "");
-        typeLoc = DataLocation::Memory;
-    }
-
 	else if (_variable.isFileLevelVariable())
 	{
 		solAssert(varLoc == Location::Unspecified, "");

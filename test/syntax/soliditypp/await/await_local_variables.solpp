@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma soliditypp >=0.4.2;
+pragma soliditypp >=0.8.0;
 
 contract Callee {
-    function f(uint a) external async pure returns(uint) {
+    function f(uint a) external pure returns(uint) {
         return a + 1;
     }
 }
@@ -15,12 +15,11 @@ contract Caller {
         callee = Callee(addr);
     }
 
-    function test() external async {
+    function test() external returns(uint) {
         uint temp1 = 1;
         uint temp2 = 2;
         data = await callee.f(1);
+        return temp1 + temp2 + data;
     }
 }
 // ----
-Warning 2072: (347-357): Unused local variable.
-Warning 2072: (371-381): Unused local variable.

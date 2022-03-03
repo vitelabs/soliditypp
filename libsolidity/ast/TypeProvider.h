@@ -132,10 +132,6 @@ public:
 	/// @returns the function type of an event.
 	static FunctionType const* function(EventDefinition const& _event);
 
-	/// Solidity++:
-	/// @returns the function type of a message.
-	static FunctionType const* function(MessageDefinition const& _message);
-
 	/// @returns the type of a function type name.
 	static FunctionType const* function(FunctionTypeName const& _typeName);
 
@@ -157,20 +153,13 @@ public:
 		FunctionType::Kind _kind = FunctionType::Kind::Internal,
 		bool _arbitraryParameters = false,
 		StateMutability _stateMutability = StateMutability::NonPayable,
-		ExecutionBehavior _executionBehavior = ExecutionBehavior::Sync,  // Solidity++
 		Declaration const* _declaration = nullptr,
 		bool _gasSet = false,
 		bool _valueSet = false,
-		bool _bound = false,
-		bool _saltSet = false
+		bool _tokenSet = false,  // Solidity++
+		bool _saltSet = false,
+		bool _bound = false
 	);
-
-	/// Solidity++: get callback function type of an asynchronous function call
-	/// @param callType the asynchronous function call type
-	/// @returns function type of the callback of the function call
-    static FunctionType const* callbackFromFunctionCall(
-        FunctionType const* callType
-    );
 
 	/// Auto-detect the proper type for a literal. @returns an empty pointer if the literal does
 	/// not fit any type.

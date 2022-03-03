@@ -643,14 +643,12 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			[[fallthrough]];
 		case FunctionType::Kind::External:
 		case FunctionType::Kind::DelegateCall:
-		case FunctionType::Kind::SendMessage:  // Solidity++
 			_functionCall.expression().accept(*this);
 			uint32_t callbackSelector;
-			if(_functionCall.annotation().awaitId && function.executionBehavior() == ExecutionBehavior::Async)
+			if(!_functionCall.annotation().async && function.kind() != FunctionType::Kind::DelegateCall && function.kind() != FunctionType::Kind::BareDelegateCall)
             {
-			    auto awaitId = _functionCall.annotation().awaitId;
-                callbackSelector = selectorFromAwaitId(awaitId);
-                debug("Callback signature is " + toHex(callbackSelector, HexPrefix::Add));
+			    callbackSelector = selectorFromAwaitId( _functionCall.id());
+                debug("Callback selector is " + toHex(callbackSelector, HexPrefix::Add));
             }
 			else
                 callbackSelector = 0;
@@ -785,8 +783,8 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 					FunctionType::Kind::BareCall,
 					false,
 					StateMutability::NonPayable,
-                    ExecutionBehavior::Async,
 					nullptr,
+					true,
 					true,
 					true
 				),
@@ -1354,8 +1352,8 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 	_functionCallOptions.expression().accept(*this);
 
 	// Desired Stack: [salt], [gas], [value]
-	// Solidity++: desired stack: [tokenId], [amount]
-	enum Option { Salt, Gas, Value, TokenId, Amount };
+	// Solidity++: desired stack: [tokenId], [value]
+	enum Option { Salt, Gas, TokenId, Value };  // Note: the order matters
 
 	vector<Option> presentOptions;
 	FunctionType const& funType = dynamic_cast<FunctionType const&>(
@@ -1363,13 +1361,8 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 	);
 	if (funType.saltSet()) presentOptions.emplace_back(Salt);
 	if (funType.gasSet()) presentOptions.emplace_back(Gas);
-
-	// Solidity++:
-	if (funType.valueSet())
-	{
-	    presentOptions.emplace_back(TokenId);
-        presentOptions.emplace_back(Amount);
-	}
+	if (funType.tokenSet()) presentOptions.emplace_back(TokenId);  // Solidity++:
+	if (funType.valueSet()) presentOptions.emplace_back(Value);
 
 	for (size_t i = 0; i < _functionCallOptions.options().size(); ++i)
 	{
@@ -1383,18 +1376,13 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 		}
 		else if (name == "gas")
 			newOption = Gas;
-		else if (name == "value")
-			newOption = Value;
-		// Solidity++:
-		else if (name == "token")
+		else if (name == "token")  // Solidity++:
         {
 		    newOption = TokenId;
 		    requiredType = TypeProvider::viteTokenId();
         }
-		else if (name == "amount")
-        {
-		    newOption = Amount;
-        }
+		else if (name == "value")
+		    newOption = Value;
 
 		else
 			solAssert(false, "Unexpected option name!");
@@ -1812,9 +1800,9 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 		}
 		
 		// Solidity++:
-		else if (member == "tokenid")
+		else if (member == "token")
 			m_context << Instruction::TOKENID;
-		else if (member == "amount")
+		else if (member == "value")
 			m_context << Instruction::CALLVALUE;
 
 		else
@@ -2132,22 +2120,7 @@ bool ExpressionCompiler::visit(IndexRangeAccess const& _indexAccess)
 
 bool ExpressionCompiler::visit(AwaitExpression const& _awaitExpression)
 {
-    debug("Visit await expression");
-    CompilerContext::LocationSetter locationSetter(m_context, _awaitExpression);
-
     _awaitExpression.expression().accept(*this);
-    auto call = dynamic_cast<FunctionCall const*>(&_awaitExpression.expression());
-    auto callType = dynamic_cast<FunctionType const *>(call->expression().annotation().type);
-    solAssert(callType, "fail to convert function call: " + callType->toString(false));
-
-    // Unpack return values from calldata
-    if (!callType->returnParameterTypes().empty())
-    {
-        m_context << CompilerUtils::dataStartOffset;
-        m_context << Instruction::DUP1 << Instruction::CALLDATASIZE << Instruction::SUB;
-
-        CompilerUtils(m_context).abiDecode(callType->returnParameterTypes());
-    }
 
     return false;
 }
@@ -2202,13 +2175,6 @@ void ExpressionCompiler::endVisit(Identifier const& _identifier)
 	else if (dynamic_cast<ImportDirective const*>(declaration))
 	{
 		// no-op
-	}
-	// Solidity++: message -> function
-	else if (dynamic_cast<MessageDefinition const*>(declaration))
-	{
-		auto const* function = dynamic_cast<MessageDefinition const*>(declaration);
-		u256 identifier = FunctionType(*function).externalIdentifier();
-		m_context << identifier;
 	}
 	else
 	{
@@ -2501,20 +2467,19 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 	// Solidity++: CALL stack layout
 	// <stack top>
-	// amount [if _functionType.valueSet()]
-	// token  [if _functionType.valueSet()]
+	// value [if _functionType.valueSet()]
+	// token [if _functionType.tokenSet()]
 	// self object [if bound - moved to top right away]
 	// function identifier [unless bare]
 	// contract address
 
 	unsigned selfSize = _functionType.bound() ? _functionType.selfType()->sizeOnStack() : 0;
-	unsigned valueSize = (_functionType.valueSet() ? 2 : 0);
-	unsigned contractStackPos = m_context.currentToBaseStackOffset(1 + valueSize + selfSize + (_functionType.isBareCall() ? 0 : 1));
-	// unsigned gasStackPos = m_context.currentToBaseStackOffset(gasValueSize);
+	unsigned valueTokenSize = (_functionType.valueSet() ? 1u : 0) +  (_functionType.tokenSet() ? 1u : 0);
+	unsigned contractStackPos = m_context.currentToBaseStackOffset(1 + valueTokenSize + selfSize + (_functionType.isBareCall() ? 0 : 1));
+	unsigned tokenStackPos = m_context.currentToBaseStackOffset(valueTokenSize);
 	unsigned valueStackPos = m_context.currentToBaseStackOffset(1);
-	unsigned tokenStackPos = m_context.currentToBaseStackOffset(2);
 
-	m_context.appendDebugInfo("ExpressionCompiler::appendExternalFunctionCall(" + _functionType.externalSignature() + ",");
+	m_context.appendDebugInfo("ExpressionCompiler::appendExternalFunctionCall(" + _functionType.toString(true) + ",");
 	m_context.appendDebugInfo("      args: [");
 	for(auto arg : _arguments)
 	{
@@ -2525,7 +2490,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 
 	// move self object to top
 	if (_functionType.bound())
-		utils().moveToStackTop(0, _functionType.selfType()->sizeOnStack());
+	    utils().moveToStackTop(valueTokenSize, _functionType.selfType()->sizeOnStack());
 
 	auto funKind = _functionType.kind();
 
@@ -2544,12 +2509,15 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		solAssert(!_functionType.isBareCall(), "");
 	}
 
-	// Solidity++: no return data
-	// ReturnInfo const returnInfo{m_context.evmVersion(), _functionType};
-	// bool const haveReturndatacopy = m_context.evmVersion().supportsReturndata();
-	// unsigned const retSize = returnInfo.estimatedReturnSize;
-	// bool const dynamicReturnSize = returnInfo.dynamicReturnSize;
-	// TypePointers const& returnTypes = returnInfo.returnTypes;
+	ReturnInfo const returnInfo{m_context.evmVersion(), _functionType};
+	bool const haveReturndatacopy = m_context.evmVersion().supportsReturndata();
+	unsigned const retSize = returnInfo.estimatedReturnSize;
+
+	// Solidity++: force dynamic return size for non-delegate calls,
+	// because the data will return asynchronously and only be taken from RETURNDATACOPY.
+	// But we still have chance to get return data from memory by passing retOffset / retLength in DELEGATECALL.
+	bool const dynamicReturnSize = !isDelegateCall || returnInfo.dynamicReturnSize;
+	TypePointers const& returnTypes = returnInfo.returnTypes;
 
 	// Evaluate arguments.
 	m_context.appendDebugInfo("evaluate arguments");
@@ -2573,6 +2541,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		// Output area will be "start of input area" - 32.
 		// The reason is that a failing ECRecover cannot be detected, it will just return
 		// zero bytes (which we cannot detect).
+		// @fixme:
 		// solAssert(0 < retSize && retSize <= 32, "");
 		utils().fetchFreeMemoryPointer();
 		m_context << u256(0) << Instruction::DUP2 << Instruction::MSTORE;
@@ -2580,7 +2549,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		utils().storeFreeMemoryPointer();
 	}
 
-	// Solidity++: no gas
+	// Solidity++: @fixme
 	// if (!m_context.evmVersion().canOverchargeGasForCall())
 	// {
 	// 	// Touch the end of the output area so that we do not pay for memory resize during the call
@@ -2596,10 +2565,11 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	// 	}
 	// }
 
+	// Copy function identifier to memory.
 	utils().fetchFreeMemoryPointer();
 	if (!_functionType.isBareCall())
 	{
-		m_context << dupInstruction(2 + valueSize + CompilerUtils::sizeOnStack(argumentTypes));
+	    m_context << dupInstruction(2 + valueTokenSize + CompilerUtils::sizeOnStack(argumentTypes));
 		utils().storeInMemoryDynamic(IntegerType(8 * CompilerUtils::dataStartOffset), false);
 	}
 
@@ -2622,68 +2592,79 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		encodeForLibraryCall
 	);
 
-	// Solidity++:
-	// Stack now: [address, function_id, (token), (amount), input_memory_end] top
+	// Stack now:
+	// <stack top>
+	// input_memory_end
+	// value [if _functionType.valueSet()]
+	// token [if _functionType.tokenSet()]
+	// function identifier [unless bare]
+	// contract address
 
 	// Output data will replace input data, unless we have ECRecover (then, output
 	// area will be 32 bytes just before input area).
 	// put on stack: <size of output> <memory pos of output> <size of input> <memory pos of input>
-
-	// Solidity++: no output data
-	// m_context << u256(retSize);
-
-	m_context.appendDebugInfo("the start of input");
+	// Solidity++: <size of output> <memory pos of output> are only required for delegate calls
+	// stack here: addr, func, token, value, inEnd
+	m_context << u256(retSize);
+	// stack here: addr, func, token, value, inEnd, outSize
 	utils().fetchFreeMemoryPointer(); // This is the start of input
-
-	// if (funKind == FunctionType::Kind::ECRecover)
-	// {
-	// 	// In this case, output is 32 bytes before input and has already been cleared.
-	// 	m_context << u256(32) << Instruction::DUP2 << Instruction::SUB << Instruction::SWAP1;
-	// 	// Here: <input end> <output size> <outpos> <input pos>
-	// 	m_context << Instruction::DUP1 << Instruction::DUP5 << Instruction::SUB;
-	// 	m_context << Instruction::SWAP1;
-	// }
-	// else
-	// {
-	// 	m_context << Instruction::DUP1 << Instruction::DUP4 << Instruction::SUB;
-	// 	m_context << Instruction::DUP2;
-	// }
-
-	// Solidity++: @todo: use utils.toSizeAfterFreeMemoryPointer() instead
-	m_context.appendDebugInfo("stack: [input_start] top");
-	m_context << Instruction::DUP1;
-    m_context.appendDebugInfo("stack: [input_start, input_start] top");
-	m_context << Instruction::DUP3;
-    m_context.appendDebugInfo("stack: [input_start, input_start, input_end] top");
-    m_context << Instruction::SUB;
-    m_context.appendDebugInfo("stack: [input_start, input_size] top");
-	m_context << Instruction::SWAP1;
-    m_context.appendDebugInfo("stack: [input_size, input_start] top");
+	// stack here: addr, func, token, value, inEnd, outSize, inOff
+	if (funKind == FunctionType::Kind::ECRecover)
+	{
+		// In this case, output is 32 bytes before input and has already been cleared.
+		// stack here: addr, func, token, value, inEnd, outSize, inOff
+		m_context << u256(32) << Instruction::DUP2 << Instruction::SUB << Instruction::SWAP1;
+		// Here: <input end> <output size> <outpos> <input pos>
+		m_context << Instruction::DUP1 << Instruction::DUP5 << Instruction::SUB;
+		m_context << Instruction::SWAP1;
+	}
+	else if (isDelegateCall)
+	{
+	    // stack here: addr, func, token, value, inEnd, outSize, inOff
+		m_context << Instruction::DUP1 << Instruction::DUP4 << Instruction::SUB;
+		// stack here: addr, func, token, value, inEnd, outSize, inOff, inSize
+		m_context << Instruction::DUP2;
+		// stack here: addr, func, token, value, inEnd, outSize, inOff, inSize, inOff
+	} else {
+	    // Solidity++: don't need outSize, outOff
+	    // stack here: addr, func, token, value, inEnd, outSize, inOff
+	    m_context << Instruction::SWAP1 << Instruction::POP; // pop outSize
+	    // stack here: addr, func, token, value, inEnd, inOff
+	    m_context << Instruction::DUP1 << Instruction::DUP3 << Instruction::SUB << Instruction::SWAP1;
+	    // stack here: addr, func, token, value, inSize, inOff
+	}
 
 	// CALL arguments: inSize, inOff (already present up to here)
-	// [value,] addr (stack top)
+	// [value, token] addr (stack top)
 	if (isDelegateCall)
 		solAssert(!_functionType.valueSet(), "Value set for delegatecall");
 	else if (useStaticCall)
 		solAssert(!_functionType.valueSet(), "Value set for staticcall");
-	else if (_functionType.valueSet())
+	else if (_functionType.valueSet() && _functionType.tokenSet())
 	{
 	    m_context.appendDebugInfo("value to send");
 		m_context << dupInstruction(m_context.baseToCurrentStackOffset(valueStackPos));
-		m_context.appendDebugInfo("token id");
+		m_context.appendDebugInfo("vite token");
 		m_context << dupInstruction(m_context.baseToCurrentStackOffset(tokenStackPos));  // Solidity++: push tokenId
+	}
+	else if (_functionType.valueSet() && !_functionType.tokenSet())
+	{
+	    m_context.appendDebugInfo("value to send");
+	    m_context << dupInstruction(m_context.baseToCurrentStackOffset(valueStackPos));
+	    m_context.appendDebugInfo("default tokenId");
+	    m_context << u256("0x5649544520544f4b454e");  // Solidity++: push tokenId
 	}
 	else
 	{
 		// Solidity++: 0 VITE
 		m_context.appendDebugInfo("no value to send (0 VITE)");
-		m_context << u256(0) << u256("0x2445f6e5cde8c2c70e44");
+		m_context << u256(0) << u256("0x5649544520544f4b454e");
 	}
 
 	m_context.appendDebugInfo("contract address");
 	m_context << dupInstruction(m_context.baseToCurrentStackOffset(contractStackPos));
 
-	if(!!_callbackSelector)
+	if(!!_callbackSelector && !isDelegateCall)
 	{
 	    m_context.appendDebugInfo("callback id");
 	    m_context << _callbackSelector;
@@ -2729,34 +2710,38 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	else if (!!_callbackSelector)
 	{
 	    m_context << Instruction::SYNCCALL;
-	    m_context.addCallbackDest(_callbackSelector);
+	    m_context << Instruction::STOP;
+	    m_context.addCallbackDest(_callbackSelector);  // An additional bool is pushed into stack by CALLBACKDEST.
 	}
 	else
 		m_context << Instruction::CALL;
 
 	unsigned remainsSize =
 		2u + // contract address, input_memory_end
-		(_functionType.valueSet() ? 2 : 0) +  // Solidity++: amount + tokenId
-		// (_functionType.gasSet() ? 1 : 0) +  // Solidity++: no gas
-		(!_functionType.isBareCall() ? 1 : 0);
+		(_functionType.valueSet() ? 1 : 0) +  // Solidity++: value
+		(_functionType.tokenSet() ? 1 : 0) +  // Solidity++: tokenId
+		(!_functionType.isBareCall() ? 1 : 0);  // function id
 
 	evmasm::AssemblyItem endTag = m_context.newTag();
 
-	// if (!returnSuccessConditionAndReturndata && !_tryCall)
-	// {
-	// 	// Propagate error condition (if CALL pushes 0 on stack).
-	// 	m_context << Instruction::ISZERO;
-	// 	m_context.appendConditionalRevert(true);
-	// }
-	// else
-	// 	m_context << swapInstruction(remainsSize);
+	if (!!_callbackSelector || isDelegateCall)  // Solidity++: success flag only be pushed into stack if the call is a sync call
+	{
+	    if (!returnSuccessConditionAndReturndata && !_tryCall)
+	    {
+	        // Propagate error condition (if CALLBACKDEST pushes 0 on stack).
+	        m_context << Instruction::ISZERO;
+	        m_context.appendConditionalRevert(true);
+	    }
+	    else
+	        m_context << swapInstruction(remainsSize);
+	}
 
 	m_context.appendDebugInfo("pop stack slots " + to_string(remainsSize));
 	utils().popStackSlots(remainsSize);
 
 	// Only success flag is remaining on stack.
 
-	if (_tryCall)
+	if (_tryCall && (!!_callbackSelector || isDelegateCall))
 	{
 		m_context << Instruction::DUP1 << Instruction::ISZERO;
 		m_context.appendConditionalJumpTo(endTag);
@@ -2787,13 +2772,53 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		utils().fetchFreeMemoryPointer();
 		m_context << Instruction::SUB << Instruction::MLOAD;
 	}
-
-	// Solidity++: no real return data, but need placeholder in async call (call external function without await operator)
-	// r = a.f();  // r will be set to zero value of return type of f().
-	if (!_callbackSelector)
+	else if (!returnTypes.empty())
 	{
-	    for(auto returnType : _functionType.returnParameterTypes()) {
-	        utils().pushZeroValue(*returnType);  // just a placeholder, do not use it
+	    // Solidity++: prepare return data of an external call (either sync or async)
+	    if (!!_callbackSelector || isDelegateCall)
+	    {
+	        utils().fetchFreeMemoryPointer();
+	        // Stack: return_data_start
+
+	        // The old decoder did not allocate any memory (i.e. did not touch the free
+	        // memory pointer), but kept references to the return data for
+	        // (statically-sized) arrays
+	        bool needToUpdateFreeMemoryPtr = false;
+	        if (dynamicReturnSize || m_context.useABICoderV2())
+	            needToUpdateFreeMemoryPtr = true;
+	        else
+	            for (auto const& retType: returnTypes)
+	                if (dynamic_cast<ReferenceType const*>(retType))
+	                    needToUpdateFreeMemoryPtr = true;
+
+            // Stack: return_data_start
+            if (dynamicReturnSize)
+            {
+                solAssert(haveReturndatacopy, "");
+                m_context.appendInlineAssembly("{ returndatacopy(return_data_start, 0, returndatasize()) }", {"return_data_start"});
+            }
+            else
+                solAssert(retSize > 0, "");
+            // Always use the actual return length, and not our calculated expected length, if returndatacopy is supported.
+            // This ensures it can catch badly formatted input from external calls.
+            m_context << (haveReturndatacopy ? evmasm::AssemblyItem(Instruction::RETURNDATASIZE) : u256(retSize));
+            // Stack: return_data_start return_data_size
+            if (needToUpdateFreeMemoryPtr)
+                m_context.appendInlineAssembly(R"({
+                    // round size to the next multiple of 32
+                    let newMem := add(start, and(add(size, 0x1f), not(0x1f)))
+                    mstore(0x40, newMem)
+                })", {"start", "size"});
+
+            utils().abiDecode(returnTypes, true);
+	    }
+	    else
+	    {
+	        // Solidity++: @TODO: Implement a promise. At present there's no real data returned, but need a placeholder.
+	        // for `r = a.f();`, r will be set to zero value of return type of f().
+	        for(auto returnType : _functionType.returnParameterTypes()) {
+	            utils().pushZeroValue(*returnType);  // just a placeholder, do not use it
+	        }
 	    }
 	}
 
@@ -2814,7 +2839,7 @@ void ExpressionCompiler::appendExpressionCopyToMemory(Type const& _expectedType,
 
 void ExpressionCompiler::appendVariable(VariableDeclaration const& _variable, Expression const& _expression)
 {
-    m_context.appendDebugInfo("ExpressionCompiler::appendVariable(" + _variable.toString() + ", " + _expression.location().text() + ")");
+    m_context.appendDebugInfo("ExpressionCompiler::appendVariable(" + _variable.name() + ", " + _expression.location().text() + ")");
 	if (_variable.isConstant())
 		acceptAndConvert(*_variable.value(), *_variable.annotation().type);
 	else if (_variable.immutable())

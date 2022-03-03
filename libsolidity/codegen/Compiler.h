@@ -25,7 +25,6 @@ public:
 		m_optimiserSettings(std::move(_optimiserSettings)),
 		m_runtimeContext(_evmVersion, _revertStrings, nullptr, _verbose),
 		m_context(_evmVersion, _revertStrings, &m_runtimeContext, _verbose),
-		m_offchainContext(_evmVersion, _revertStrings),
 		m_verbose(_verbose)
 	{ }
 
@@ -47,18 +46,10 @@ public:
 	/// @returns Runtime assembly.
 	evmasm::Assembly const& runtimeAssembly() const { return m_context.assembly().sub(m_runtimeSub); }
 
-	/// @returns Offchain assembly.
-	/// Solidity++: get offchain assembly
-	evmasm::Assembly const& offchainAssembly() const { return m_offchainContext.assembly(); }
-
 	/// @returns Entire assembly as a shared pointer to non-const.
 	std::shared_ptr<evmasm::Assembly> assemblyPtr() const { return m_context.assemblyPtr(); }
 	/// @returns Runtime assembly as a shared pointer.
 	std::shared_ptr<evmasm::Assembly> runtimeAssemblyPtr() const;
-
-	/// @returns Offchain assembly as a shared pointer to non-const.
-	/// Solidity++: get offchain assembly pointer
-	std::shared_ptr<evmasm::Assembly> offchainAssemblyPtr() const { return m_offchainContext.assemblyPtr(); }
 
 	std::string generatedYulUtilityCode() const { return m_context.generatedYulUtilityCode(); }
 	std::string runtimeGeneratedYulUtilityCode() const { return m_runtimeContext.generatedYulUtilityCode(); }
@@ -75,11 +66,8 @@ private:
 	CompilerContext m_runtimeContext;
 	size_t m_runtimeSub = size_t(-1); ///< Identifier of the runtime sub-assembly, if present.
 	CompilerContext m_context;
-	// Solidity++: offchain compiler context
-	CompilerContext m_offchainContext;
 	// Solidity++:
 	bool m_verbose = false;
-
 };
 
 }

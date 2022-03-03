@@ -11,13 +11,13 @@
 #include <libsolidity/parsing/Parser.h>
 #include <libsolidity/analysis/NameAndTypeResolver.h>
 #include <libsolidity/analysis/Scoper.h>
-#include <libsolidity/analysis/SyntaxChecker.h>
+#include <libsolidity/analysis/SolidityppSyntaxChecker.h>
 #include <libsolidity/analysis/DeclarationTypeChecker.h>
 #include <libsolidity/codegen/CompilerContext.h>
 #include <libsolidity/codegen/ExpressionCompiler.h>
 #include <libsolidity/ast/AST.h>
 #include <libsolidity/ast/TypeProvider.h>
-#include <libsolidity/analysis/TypeChecker.h>
+#include <libsolidity/analysis/SolidityppTypeChecker.h>
 #include <liblangutil/ErrorReporter.h>
 #include <libevmasm/LinkerObject.h>
 #include <test/Common.h>
@@ -107,7 +107,7 @@ bytes compileFirstExpression(
 	ErrorReporter errorReporter(errors);
 	GlobalContext globalContext;
 	Scoper::assignScopes(*sourceUnit);
-	BOOST_REQUIRE(SyntaxChecker(errorReporter, false).checkSyntax(*sourceUnit));
+	BOOST_REQUIRE(SolidityppSyntaxChecker(errorReporter, false).checkSyntax(*sourceUnit));
 	NameAndTypeResolver resolver(globalContext, solidity::test::CommonOptions::get().evmVersion(), errorReporter);
 	resolver.registerDeclarations(*sourceUnit);
 	BOOST_REQUIRE_MESSAGE(resolver.resolveNamesAndTypes(*sourceUnit), "Resolving names failed");

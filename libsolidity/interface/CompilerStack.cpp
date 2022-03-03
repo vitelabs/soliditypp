@@ -19,9 +19,9 @@
 #include <libsolidity/analysis/NameAndTypeResolver.h>
 #include <libsolidity/analysis/PostTypeChecker.h>
 #include <libsolidity/analysis/StaticAnalyzer.h>
-#include <libsolidity/analysis/SyntaxChecker.h>
+#include <libsolidity/analysis/SolidityppSyntaxChecker.h>
 #include <libsolidity/analysis/Scoper.h>
-#include <libsolidity/analysis/TypeChecker.h>
+#include <libsolidity/analysis/SolidityppTypeChecker.h>
 #include <libsolidity/analysis/ViewPureChecker.h>
 #include <libsolidity/analysis/ImmutableValidator.h>
 
@@ -146,7 +146,7 @@ void CompilerStack::setSMTSolverChoice(smtutil::SMTSolverChoice _enabledSMTSolve
 	m_enabledSMTSolvers = _enabledSMTSolvers;
 }
 
-void CompilerStack::setLibraries(std::map<std::string, util::h160> const& _libraries)
+void CompilerStack::setLibraries(std::map<std::string, util::h168> const& _libraries)
 {
 	if (m_stackState >= ParsedAndImported)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Must set libraries before parsing."));
@@ -326,7 +326,7 @@ bool CompilerStack::analyze()
 	try
 	{
 	    debug("Syntax checking...");
-		SyntaxChecker syntaxChecker(m_errorReporter, m_optimiserSettings.runYulOptimiser);
+	    SolidityppSyntaxChecker syntaxChecker(m_errorReporter, m_optimiserSettings.runYulOptimiser);
 		for (Source const* source: m_sourceOrder)
 			if (source->ast && !syntaxChecker.checkSyntax(*source->ast))
 				noErrors = false;
@@ -389,7 +389,7 @@ bool CompilerStack::analyze()
 		// Note: this does not resolve overloaded functions. In order to do that, types of arguments are needed,
 		// which is only done one step later.
         debug("Type checking...");
-		TypeChecker typeChecker(m_evmVersion, m_errorReporter);
+		SolidityppTypeChecker typeChecker(m_evmVersion, m_errorReporter);
 		for (Source const* source: m_sourceOrder)
 			if (source->ast && !typeChecker.checkTypeRequirements(*source->ast))
 				noErrors = false;
@@ -602,8 +602,6 @@ void CompilerStack::link()
 	{
 		contract.second.object.link(m_libraries);
 		contract.second.runtimeObject.link(m_libraries);
-		// Solidity++: link offchain functions
-		contract.second.offchainObject.link(m_libraries);
 	}
 	debug("Linked.");
 }
@@ -647,16 +645,6 @@ evmasm::AssemblyItems const* CompilerStack::runtimeAssemblyItems(string const& _
 
 	Contract const& currentContract = contract(_contractName);
 	return currentContract.evmRuntimeAssembly ? &currentContract.evmRuntimeAssembly->items() : nullptr;
-}
-
-// Solidity++: offchain assembly items
-evmasm::AssemblyItems const* CompilerStack::offchainAssemblyItems(string const& _contractName) const
-{
-	if (m_stackState != CompilationSuccessful)
-		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Compilation was not successful."));
-
-	Contract const& currentContract = contract(_contractName);
-	return currentContract.offchainAssembly ? &currentContract.offchainAssembly->items() : nullptr;
 }
 
 Json::Value CompilerStack::generatedSources(string const& _contractName, bool _runtime) const
@@ -803,15 +791,6 @@ evmasm::LinkerObject const& CompilerStack::runtimeObject(string const& _contract
 	return contract(_contractName).runtimeObject;
 }
 
-// Solidity++: return offchain linker object
-evmasm::LinkerObject const& CompilerStack::offchainObject(string const& _contractName) const
-{
-	if (m_stackState != CompilationSuccessful)
-		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Compilation was not successful."));
-
-	return contract(_contractName).offchainObject;
-}
-
 /// TODO: cache this string
 string CompilerStack::assemblyString(string const& _contractName, StringMap _sourceCodes) const
 {
@@ -825,19 +804,6 @@ string CompilerStack::assemblyString(string const& _contractName, StringMap _sou
 		return string();
 }
 
-// Solidity++: return offchain assembly string
-string CompilerStack::offchainAssemblyString(string const& _contractName, StringMap _sourceCodes) const
-{
-	if (m_stackState != CompilationSuccessful)
-		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Compilation was not successful."));
-
-	Contract const& currentContract = contract(_contractName);
-	if (currentContract.offchainAssembly)
-		return currentContract.offchainAssembly->assemblyString(_sourceCodes);
-	else
-		return string();
-}
-
 /// TODO: cache the JSON
 Json::Value CompilerStack::assemblyJSON(string const& _contractName) const
 {
@@ -847,19 +813,6 @@ Json::Value CompilerStack::assemblyJSON(string const& _contractName) const
 	Contract const& currentContract = contract(_contractName);
 	if (currentContract.evmAssembly)
 		return currentContract.evmAssembly->assemblyJSON(sourceIndices());
-	else
-		return Json::Value();
-}
-
-// Solidity++: return offchain assembly JSON
-Json::Value CompilerStack::offchainAssemblyJSON(string const& _contractName) const
-{
-	if (m_stackState != CompilationSuccessful)
-		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Compilation was not successful."));
-
-	Contract const& currentContract = contract(_contractName);
-	if (currentContract.offchainAssembly)
-		return currentContract.offchainAssembly->assemblyJSON(sourceIndices());
 	else
 		return Json::Value();
 }
@@ -1285,20 +1238,6 @@ void CompilerStack::compileContract(
 	catch(evmasm::AssemblyException const&)
 	{
 		solAssert(false, "Assembly exception for deployed bytecode");
-	}
-
-	// Solidity++: assemble offchain object
-	compiledContract.offchainAssembly = compiler->offchainAssemblyPtr();
-	solAssert(compiledContract.offchainAssembly, "");
-	try
-	{
-		// Assemble offchain object.
-		debug("Assemble offchain object");
-		compiledContract.offchainObject = compiledContract.offchainAssembly->assemble();
-	}
-	catch(evmasm::AssemblyException const&)
-	{
-		solAssert(false, "Assembly exception for offchain bytecode");
 	}
 
 	// Throw a warning if EIP-170 limits are exceeded:

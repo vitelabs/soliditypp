@@ -111,7 +111,9 @@ ASTPointer<SourceUnit> Parser::parse(shared_ptr<Scanner> const& _scanner)
 			}
 		}
 		solAssert(m_recursionDepth == 0, "");
-		return nodeFactory.createNode<SourceUnit>(findLicenseString(nodes), nodes);
+		auto ast = nodeFactory.createNode<SourceUnit>(findLicenseString(nodes), nodes);
+		ast->annotation().sourceLanguage = m_sourceLanguage;  // Solidity++
+		return ast;
 	}
 	catch (FatalError const&)
 	{
@@ -132,8 +134,11 @@ void Parser::parsePragmaVersion(SourceLocation const& _location, vector<Token> c
 			"Found version pragma, but failed to parse it. "
 			"Please ensure there is a trailing semicolon."
 		);
-	static SemVerVersion const currentVersion{string(VersionString)};
+
+	auto version = (_literals[0] == "solidity") ? string(VersionString) : string(SolidityppVersionString);
+	static SemVerVersion const currentVersion{version};
 	// FIXME: only match for major version incompatibility
+
 	if (!matchExpression->matches(currentVersion))
 		// If m_parserErrorRecovery is true, the same message will appear from SyntaxChecker::visit(),
 		// so we don't need to report anything here.
@@ -189,8 +194,14 @@ ASTPointer<PragmaDirective> Parser::parsePragmaDirective()
 	nodeFactory.markEndPosition();
 	expectToken(Token::Semicolon);
 
+	// parse source language
 	if (literals.size() >= 1 && (literals[0] == "solidity" || literals[0] == "soliditypp"))
 	{
+	    if (literals[0] == "soliditypp")
+	        m_sourceLanguage = SourceLanguage::Soliditypp;
+	    else
+	        m_sourceLanguage = SourceLanguage::Solidity;
+
 		parsePragmaVersion(
 			nodeFactory.location(),
 			vector<Token>(tokens.begin() + 1, tokens.end()),
@@ -328,11 +339,9 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 				(currentTokenValue == Token::Function && m_scanner->peekNextToken() != Token::LParen) ||
 				currentTokenValue == Token::Constructor ||
 				currentTokenValue == Token::Receive ||
-				currentTokenValue == Token::Fallback ||
-				currentTokenValue == Token::OnMessage ||
-				currentTokenValue == Token::Getter
+				currentTokenValue == Token::Fallback
 			)
-				subNodes.push_back(parseFunctionDefinition());
+			    subNodes.push_back(parseFunctionDefinition(false, contractKind.first == ContractKind::Library));
 			else if (currentTokenValue == Token::Struct)
 				subNodes.push_back(parseStructDefinition());
 			else if (currentTokenValue == Token::Enum)
@@ -349,8 +358,6 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 				subNodes.push_back(parseModifierDefinition());
 			else if (currentTokenValue == Token::Event)
 				subNodes.push_back(parseEventDefinition());
-			else if (currentTokenValue == Token::Message)
-				subNodes.push_back(parseMessageDefinition());
 			else if (currentTokenValue == Token::Using)
 				subNodes.push_back(parseUsingDirective());
 			else
@@ -418,9 +425,6 @@ Visibility Parser::parseVisibilitySpecifier()
 		case Token::External:
 			visibility = Visibility::External;
 			break;
-        case Token::Offchain:
-            visibility = Visibility::Offchain;
-            break;
 		default:
 			solAssert(false, "Invalid visibility specifier.");
 	}
@@ -480,23 +484,6 @@ StateMutability Parser::parseStateMutability()
 	return stateMutability;
 }
 
-// Solidity++: parse execution behavior
-ExecutionBehavior Parser::parseExecutionBehavior()
-{
-    ExecutionBehavior executionBehavior(ExecutionBehavior::Sync);
-    Token token = m_scanner->currentToken();
-    switch (token)
-    {
-        case Token::Async:
-            executionBehavior = ExecutionBehavior::Async;
-            break;
-        default:
-            solAssert(false, "Invalid execution behavior specifier.");
-    }
-    m_scanner->next();
-    return executionBehavior;
-}
-
 Parser::FunctionHeaderParserResult Parser::parseFunctionHeader(bool _isStateVariable)
 {
 	RecursionGuard recursionGuard(*this);
@@ -544,22 +531,6 @@ Parser::FunctionHeaderParserResult Parser::parseFunctionHeader(bool _isStateVari
 			else
 				result.stateMutability = parseStateMutability();
 		}
-		// Solidity++: execution behavior of a function: sync / async
-        else if (TokenTraits::isExecutionBehaviorSpecifier(token))
-        {
-            if (result.executionBehavior == ExecutionBehavior::Async)
-            {
-                parserError(
-                        100101_error,
-                        "Execution behavior already specified as \"" +
-                        executionBehaviorToString(result.executionBehavior) +
-                        "\"."
-                );
-                m_scanner->next();
-            }
-            else
-                result.executionBehavior = parseExecutionBehavior();
-        }
 		else if (!_isStateVariable && token == Token::Override)
 		{
 			if (result.overrides)
@@ -589,7 +560,7 @@ Parser::FunctionHeaderParserResult Parser::parseFunctionHeader(bool _isStateVari
 	return result;
 }
 
-ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
+ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction, bool _library)
 {
 	RecursionGuard recursionGuard(*this);
 	ASTNodeFactory nodeFactory(*this);
@@ -597,23 +568,19 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 
 	Token kind = m_scanner->currentToken();
 	ASTPointer<ASTString> name;
-	if (kind == Token::Function || kind == Token::OnMessage || kind == Token::Getter)  // Solidity++
+	if (kind == Token::Function)
 	{
 		m_scanner->next();
 		if (
 			m_scanner->currentToken() == Token::Constructor ||
 			m_scanner->currentToken() == Token::Fallback ||
-			m_scanner->currentToken() == Token::Receive ||
-			m_scanner->currentToken() == Token::OnMessage ||
-			m_scanner->currentToken() == Token::Getter
+			m_scanner->currentToken() == Token::Receive
 		)
 		{
 			std::string expected = std::map<Token, std::string>{
 				{Token::Constructor, "constructor"},
 				{Token::Fallback, "fallback function"},
 				{Token::Receive, "receive function"},
-				{Token::OnMessage, "onMessage function"},
-				{Token::Getter, "offchain function"},
 			}.at(m_scanner->currentToken());
 			name = make_shared<ASTString>(TokenTraits::toString(m_scanner->currentToken()));
 			string message{
@@ -639,18 +606,6 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 
 	FunctionHeaderParserResult header = parseFunctionHeader(false);
 
-	if(kind == Token::OnMessage)
-	{
-		header.visibility = Visibility::External;  // Solidity++: the visibility of onMessage is external
-		header.executionBehavior = ExecutionBehavior::Async;
-	}
-
-	else if(kind == Token::Getter)
-	{
-		header.visibility = Visibility::Offchain;  // Solidity++: the visibility of getter is offchain
-        header.executionBehavior = ExecutionBehavior::Sync;
-	}
-
 	ASTPointer<Block> block;
 	nodeFactory.markEndPosition();
 	if (m_scanner->currentToken() == Token::Semicolon)
@@ -664,7 +619,6 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinition(bool _freeFunction)
 		name,
 		header.visibility,
 		header.stateMutability,
-		header.executionBehavior,
 		_freeFunction,
 		kind,
 		header.isVirtual,
@@ -944,25 +898,6 @@ ASTPointer<EventDefinition> Parser::parseEventDefinition()
 	return nodeFactory.createNode<EventDefinition>(name, documentation, parameters, anonymous);
 }
 
-// Solidity++:
-ASTPointer<MessageDefinition> Parser::parseMessageDefinition()
-{
-	RecursionGuard recursionGuard(*this);
-	ASTNodeFactory nodeFactory(*this);
-	ASTPointer<StructuredDocumentation> documentation = parseStructuredDocumentation();
-
-	expectToken(Token::Message);
-	ASTPointer<ASTString> name(expectIdentifierToken());
-
-	VarDeclParserOptions options;
-	options.allowIndexed = true;
-	ASTPointer<ParameterList> parameters = parseParameterList(options);
-
-	nodeFactory.markEndPosition();
-	expectToken(Token::Semicolon);
-	return nodeFactory.createNode<MessageDefinition>(name, documentation, parameters);
-}
-
 ASTPointer<UsingForDirective> Parser::parseUsingDirective()
 {
 	RecursionGuard recursionGuard(*this);
@@ -1062,7 +997,7 @@ ASTPointer<TypeName> Parser::parseTypeName()
 		nodeFactory.markEndPosition();
 		m_scanner->next();
 		auto stateMutability = elemTypeName.token() == Token::Address
-			? optional<StateMutability>{StateMutability::Payable} // Solidity++: default mutability of address is payable
+			? optional<StateMutability>{StateMutability::NonPayable}
 			: nullopt;
 		if (TokenTraits::isStateMutabilitySpecifier(m_scanner->currentToken()))
 		{
@@ -1256,11 +1191,6 @@ ASTPointer<Statement> Parser::parseStatement(bool _allowUnchecked)
 		case Token::Emit:
 			statement = parseEmitStatement(docString);
 			break;
-		// Solidity++: parse send statement
-		case Token::Send:
-			statement = parseSendStatement(docString);
-			break;
-
 		case Token::Identifier:
 			if (m_insideModifier && m_scanner->currentLiteral() == "_")
 				{
@@ -1487,70 +1417,6 @@ ASTPointer<EmitStatement> Parser::parseEmitStatement(ASTPointer<ASTString> const
 	expectToken(Token::RParen);
 	auto eventCall = eventCallNodeFactory.createNode<FunctionCall>(eventName, arguments, names);
 	auto statement = nodeFactory.createNode<EmitStatement>(_docString, eventCall);
-	return statement;
-}
-
-
-// Solidity++: parse send statement
-ASTPointer<SendStatement> Parser::parseSendStatement(ASTPointer<ASTString> const& _docString)
-{
-    ASTNodeFactory nodeFactory(*this);
-	expectToken(Token::Send);
-
-    // parse call options
-    ASTNodeFactory callOptionsNodeFactory(*this);
-    bool hasCallOptions = false;
-    pair<vector<ASTPointer<Expression>>, vector<ASTPointer<ASTString>>> optionList;
-    if (m_scanner->currentToken() == Token::LBrace) {
-        expectToken(Token::LBrace);
-        optionList = parseNamedArguments();
-        callOptionsNodeFactory.markEndPosition();
-        expectToken(Token::RBrace);
-        hasCallOptions = true;
-    }
-
-	expectToken(Token::LParen);
-
-	// parse address
-	ASTPointer<Expression> toAddress = parseExpression();
-	expectToken(Token::Comma, false);
-	m_scanner->next();
-
-    // parse function name
-    ASTPointer<Expression> expression;
-	ASTNodeFactory messageCallNodeFactory(*this);
-	if (m_scanner->currentToken() != Token::Identifier)
-		fatalParserError(5620_error, "Expected message name or path.");
-	IndexAccessedPath iap;
-	while (true)
-	{
-		iap.path.push_back(parseIdentifier());
-		if (m_scanner->currentToken() != Token::Period)
-			break;
-		m_scanner->next();
-	}
-    expression = expressionFromIndexAccessStructure(iap);
-
-	// if there are call options
-    if (hasCallOptions) {
-        expression = callOptionsNodeFactory.createNode<FunctionCallOptions>(expression, optionList.first, optionList.second);
-    }
-
-	// parse arguments
-	expectToken(Token::LParen);
-	vector<ASTPointer<Expression>> arguments;
-	vector<ASTPointer<ASTString>> names;
-	std::tie(arguments, names) = parseFunctionCallArguments();
-	messageCallNodeFactory.markEndPosition();
-	expectToken(Token::RParen);
-	nodeFactory.markEndPosition();
-	expectToken(Token::RParen);
-
-	// build function call
-    expression = messageCallNodeFactory.createNode<FunctionCall>(expression, arguments, names);
-
-    // build statement
-	auto statement = nodeFactory.createNode<SendStatement>(_docString, toAddress, expression);
 	return statement;
 }
 

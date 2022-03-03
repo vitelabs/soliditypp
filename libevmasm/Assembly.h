@@ -12,6 +12,7 @@
 
 #include <libsolutil/Common.h>
 #include <libsolutil/Assertions.h>
+#include <libsolutil/Keccak256.h>
 #include <libsolutil/Blake2.h>
 
 #include <json/json.h>

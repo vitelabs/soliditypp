@@ -1140,7 +1140,7 @@ public:
 	enum class Kind
 	{
 		Internal, ///< stack-call using plain JUMP
-		External, ///< external call using CALL
+		External, ///< external call using CALL or SYNCCALL
 		DelegateCall, ///< external call using DELEGATECALL, i.e. not exchanging the storage
 		BareCall, ///< CALL without function hash
 		BareCallCode, ///< CALLCODE without function hash
@@ -1179,7 +1179,6 @@ public:
 		/// Cannot be called.
 		Declaration,
 		/// Solidity++:
-		SendMessage,
 		BLAKE2B,
 		PrevHash,
         Height,
@@ -1197,9 +1196,6 @@ public:
 	explicit FunctionType(VariableDeclaration const& _varDecl);
 	/// Creates the function type of an event.
 	explicit FunctionType(EventDefinition const& _event);
-
-	/// Solidity++: Creates the function type of a message.
-	explicit FunctionType(MessageDefinition const& _message);
 
 	/// Creates the type of a function type name.
 	explicit FunctionType(FunctionTypeName const& _typeName);
@@ -1231,10 +1227,10 @@ public:
 		Kind _kind = Kind::Internal,
 		bool _arbitraryParameters = false,
 		StateMutability _stateMutability = StateMutability::NonPayable,
-        ExecutionBehavior _executionBehavior = ExecutionBehavior::Sync,  // Solidity++
 		Declaration const* _declaration = nullptr,
 		bool _gasSet = false,
 		bool _valueSet = false,
+		bool _tokenSet = false,  // Solidity++
 		bool _saltSet = false,
 		bool _bound = false
 	):
@@ -1244,10 +1240,10 @@ public:
 		m_returnParameterNames(std::move(_returnParameterNames)),
 		m_kind(_kind),
 		m_stateMutability(_stateMutability),
-		m_executionBehavior(_executionBehavior),  // Solidity++
 		m_arbitraryParameters(_arbitraryParameters),
 		m_gasSet(_gasSet),
 		m_valueSet(_valueSet),
+		m_tokenSet(_tokenSet),  // Solidity++
 		m_bound(_bound),
 		m_declaration(_declaration),
 		m_saltSet(_saltSet)
@@ -1330,7 +1326,6 @@ public:
 	bool isBareCall() const;
 	Kind const& kind() const { return m_kind; }
 	StateMutability stateMutability() const { return m_stateMutability; }
-	ExecutionBehavior executionBehavior() const { return m_executionBehavior; }  // Solidity++
 	/// @returns the external signature of this function type given the function name
 	std::string externalSignature() const;
 	/// @returns the external identifier of this function (the hash of the signature).
@@ -1348,11 +1343,6 @@ public:
 	/// Currently, this will only return true for internal functions like keccak and ecrecover.
 	bool isPure() const;
 	bool isPayable() const { return m_stateMutability == StateMutability::Payable; }
-
-    /// @returns true if this function is asynchronous.
-    /// Solidity++ only.
-	bool isAsync() const { return m_executionBehavior == ExecutionBehavior::Async; }
-
 	/// @return A shared pointer of StructuredDocumentation.
 	/// Can contain a nullptr in which case indicates absence of documentation.
 	ASTPointer<StructuredDocumentation> documentation() const;
@@ -1382,12 +1372,13 @@ public:
 
 	bool gasSet() const { return m_gasSet; }
 	bool valueSet() const { return m_valueSet; }
+	bool tokenSet() const { return m_tokenSet; }  // Solidity++
 	bool saltSet() const { return m_saltSet; }
 	bool bound() const { return m_bound; }
 
 	/// @returns a copy of this type, where gas or value are set manually. This will never set one
 	/// of the parameters to false.
-	TypePointer copyAndSetCallOptions(bool _setGas, bool _setValue, bool _setSalt) const;
+	TypePointer copyAndSetCallOptions(bool _setGas, bool _setValue, bool _setSalt, bool _setToken = false) const;  // Solidity++
 
 	/// @returns a copy of this function type with the `bound` flag set to true.
 	/// Should only be called on library functions.
@@ -1411,11 +1402,11 @@ private:
 	std::vector<std::string> m_returnParameterNames;
 	Kind const m_kind;
 	StateMutability m_stateMutability = StateMutability::NonPayable;
-	ExecutionBehavior m_executionBehavior = ExecutionBehavior::Sync;  // Solidity++
 	/// true if the function takes an arbitrary number of arguments of arbitrary types
 	bool const m_arbitraryParameters = false;
 	bool const m_gasSet = false; ///< true iff the gas value to be used is on the stack
 	bool const m_valueSet = false; ///< true iff the value to be sent is on the stack
+	bool const m_tokenSet = false; ///< Solidity++: true iff the Vite token Id to be sent on the stack
 	/// true iff the function is called as arg1.fun(arg2, ..., argn).
 	/// This is achieved through the "using for" directive.
 	bool const m_bound = false;

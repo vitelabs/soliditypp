@@ -21,36 +21,48 @@ using namespace solidity;
 using namespace solidity::util;
 using namespace solidity::frontend;
 
+// Solidity++: 168-bit address
 string YulUtilFunctions::combineExternalFunctionIdFunction()
 {
 	string functionName = "combine_external_function_id";
 	return m_functionCollector.createFunction(functionName, [&]() {
+	    // steps:
+	    // before: [11-byte zeros][21-byte address]
+	    // make space for selector: [7-byte zeros][21-byte address][4-byte zeros]
+	    // append selector: [7-byte zeros][21-byte address][4-byte selector]
+	    // remove leading zeros: [21-byte address][4-byte selector][7-byte zeros]
 		return Whiskers(R"(
 			function <functionName>(addr, selector) -> combined {
-				combined := <shl64>(or(<shl32>(addr), and(selector, 0xffffffff)))
+				combined := <shl56>(or(<shl32>(addr), and(selector, 0xffffffff)))
 			}
 		)")
 		("functionName", functionName)
 		("shl32", shiftLeftFunction(32))
-		("shl64", shiftLeftFunction(64))
+		("shl56", shiftLeftFunction(56))
 		.render();
 	});
 }
 
+// Solidity++: 168-bit address
 string YulUtilFunctions::splitExternalFunctionIdFunction()
 {
 	string functionName = "split_external_function_id";
 	return m_functionCollector.createFunction(functionName, [&]() {
+	    // steps:
+	    // before: [21-byte address][4-byte selector][7-byte zeros]
+	    // remove trailing zeros: [7-byte zeros][21-byte address][4-byte selector]
+	    // extract selector: [28-byte zeros][4-byte selector]
+	    // extract address: [11-byte zeros][21-byte address]
 		return Whiskers(R"(
 			function <functionName>(combined) -> addr, selector {
-				combined := <shr64>(combined)
+				combined := <shr56>(combined)
 				selector := and(combined, 0xffffffff)
 				addr := <shr32>(combined)
 			}
 		)")
 		("functionName", functionName)
 		("shr32", shiftRightFunction(32))
-		("shr64", shiftRightFunction(64))
+		("shr56", shiftRightFunction(56))
 		.render();
 	});
 }
@@ -3526,7 +3538,7 @@ string YulUtilFunctions::cleanupFunction(Type const& _type)
 			switch (dynamic_cast<FunctionType const&>(_type).kind())
 			{
 				case FunctionType::Kind::External:
-					templ("body", "cleaned := " + cleanupFunction(FixedBytesType(24)) + "(value)");
+					templ("body", "cleaned := " + cleanupFunction(FixedBytesType(25)) + "(value)");  // Solidity++: 168-bit address: the function type has 25 bytes (21-byte address + 4-byte selector)
 					break;
 				case FunctionType::Kind::Internal:
 					templ("body", "cleaned := value");

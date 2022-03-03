@@ -1,9 +1,24 @@
+/*
+	This file is part of solidity.
+
+	solidity is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	solidity is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with solidity.  If not, see <http://www.gnu.org/licenses/>.
+*/
 // SPDX-License-Identifier: GPL-3.0
 /**
- * @author Charles <charles@vite.org>
- * @date 2021
- * Solidity++ Type analyzer and checker.
- * Solidity++ is modified from Solidity under the terms of the GNU General Public License.
+ * @author Christian <c@ethdev.com>
+ * @date 2015
+ * Type analyzer and checker.
  */
 
 #pragma once
@@ -28,7 +43,7 @@ namespace solidity::frontend
  * those types and stores errors for invalid operations.
  * Provides a way to retrieve the type of an AST node.
  */
-class TypeChecker: private ASTConstVisitor
+class TypeChecker: public ASTConstVisitor
 {
 public:
 	/// @param _errorReporter provides the error logging functionality.
@@ -49,7 +64,7 @@ public:
 
 	static bool typeSupportedByOldABIEncoder(Type const& _type, bool _isLibraryCall);
 
-private:
+protected:
 
 	bool visit(ContractDefinition const& _contract) override;
 	/// Checks (and warns) if a tuple assignment might cause unexpected overwrites in storage.
@@ -103,11 +118,7 @@ private:
 	/// We need to do this manually because we want to pass the bases of the current contract in
 	/// case this is a base constructor call.
 	void visitManually(ModifierInvocation const& _modifier, std::vector<ContractDefinition const*> const& _bases);
-	
 	bool visit(EventDefinition const& _eventDef) override;
-	/// Solidity++:
-	bool visit(MessageDefinition const& _msgDef) override;
-
 	void endVisit(FunctionTypeName const& _funType) override;
 	bool visit(InlineAssembly const& _inlineAssembly) override;
 	bool visit(IfStatement const& _ifStatement) override;
@@ -126,7 +137,6 @@ private:
 	bool visit(FunctionCall const& _functionCall) override;
 	bool visit(FunctionCallOptions const& _functionCallOptions) override;
 	void endVisit(NewExpression const& _newExpression) override;
-    bool visit(AwaitExpression const& _awaitExpression) override;  // Solidity++
 	bool visit(MemberAccess const& _memberAccess) override;
 	bool visit(IndexAccess const& _indexAccess) override;
 	bool visit(IndexRangeAccess const& _indexRangeAccess) override;
