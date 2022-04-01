@@ -192,6 +192,8 @@ size_t ContractCompiler::packIntoContractCreator(ContractDefinition const& _cont
 
 	m_runtimeCompiler->appendMissingFunctions();
 	m_runtimeCompiler->appendFunctionSelector(_contract);
+	// Solidity++: Do it again to compile the missing functions which are called in the receive/fallback functions
+	m_runtimeCompiler->appendMissingFunctions();
 
 	// Solidity++: Moved from appendMissingFunctions()
 	m_runtimeCompiler->m_context.appendYulUtilityFunctions(m_optimiserSettings);
@@ -235,10 +237,12 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 	solAssert(_contract.isLibrary(), "Tried to deploy contract as library.");
 
 	appendMissingFunctions();
-	m_runtimeCompiler->appendMissingFunctions();
 
 	// Solidity++: Moved from compileContract()
+	m_runtimeCompiler->appendMissingFunctions();
 	m_runtimeCompiler->appendFunctionSelector(_contract);
+	// Solidity++: Do it again to compile the missing functions which are called in the receive/fallback functions
+	m_runtimeCompiler->appendMissingFunctions();
 
 	// Solidity++: Moved from appendMissingFunctions()
 	m_runtimeCompiler->m_context.appendYulUtilityFunctions(m_optimiserSettings);
@@ -1467,7 +1471,7 @@ void ContractCompiler::appendMissingFunctions()
 void ContractCompiler::appendModifierOrFunctionCode()
 {
 	solAssert(m_currentFunction, "");
-	auto debugInfo = "ContractCompiler::appendModifierOrFunctionCode() for " + m_currentFunction->name();
+	auto debugInfo = "ContractCompiler::appendModifierOrFunctionCode() for " + m_currentFunction->location().text();
 	debug(debugInfo);
 	m_context.appendDebugInfo(debugInfo);
 	unsigned stackSurplus = 0;
@@ -1542,8 +1546,10 @@ void ContractCompiler::appendModifierOrFunctionCode()
 
 		solAssert(!m_returnTags.empty(), "");
 		m_context.appendDebugInfo("start processing return data");
-		m_context << m_returnTags.back().first;
+		auto returnTag =  m_returnTags.back().first;
+		m_context << returnTag;
 		m_returnTags.pop_back();
+		debug("Return tag: " + returnTag.toAssemblyText(m_context.assembly()));
 
 		CompilerUtils(m_context).popStackSlots(stackSurplus);
 		for (auto var: addedVariables)

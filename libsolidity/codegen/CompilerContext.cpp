@@ -172,7 +172,9 @@ void CompilerContext::appendMissingLowLevelFunctions()
 		m_lowLevelFunctionGenerationQueue.pop();
 
 		setStackOffset(static_cast<int>(inArgs) + 1);
-		*this << m_lowLevelFunctions.at(name).tag();
+		auto tag =  m_lowLevelFunctions.at(name).tag();
+		*this << tag;
+		debug("CompilerContext::appendMissingLowLevelFunctions: " + name + "->" + tag.toAssemblyText(*m_asm));
 		generator(*this);
 		CompilerUtils(*this).moveToStackTop(outArgs);
 		appendJump(evmasm::AssemblyItem::JumpType::OutOfFunction);

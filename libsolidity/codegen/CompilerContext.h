@@ -59,6 +59,7 @@ public:
 	{
 		if (m_runtimeContext)
 			m_runtimeSub = size_t(m_asm->newSub(m_runtimeContext->m_asm).data());
+		m_asm->m_verbose = _verbose;
 	}
 
 	langutil::EVMVersion const& evmVersion() const { return m_evmVersion; }
@@ -175,11 +176,11 @@ public:
 	std::pair<u256, unsigned> storageLocationOfVariable(Declaration const& _declaration) const;
 
 	/// Appends a JUMPI instruction to a new tag and @returns the tag
-	evmasm::AssemblyItem appendConditionalJump(std::string const& _description = "") { return m_asm->appendJumpI(_description).tag(); }
+	evmasm::AssemblyItem appendConditionalJump(std::string const& _description = "") { debug("appendConditionalJump "); return m_asm->appendJumpI(_description).tag(); }
 	/// Appends a JUMPI instruction to @a _tag
-	CompilerContext& appendConditionalJumpTo(evmasm::AssemblyItem const& _tag) { m_asm->appendJumpI(_tag); return *this; }
+	CompilerContext& appendConditionalJumpTo(evmasm::AssemblyItem const& _tag) { debug("appendConditionalJumpTo "+_tag.toAssemblyText(*m_asm)); m_asm->appendJumpI(_tag); return *this; }
 	/// Appends a JUMP to a new tag and @returns the tag
-	evmasm::AssemblyItem appendJumpToNew() { return m_asm->appendJump().tag(); }
+	evmasm::AssemblyItem appendJumpToNew() { debug("appendJumpToNew "); return m_asm->appendJump().tag(); }
 	/// Appends a JUMP to a tag already on the stack
 	CompilerContext& appendJump(evmasm::AssemblyItem::JumpType _jumpType = evmasm::AssemblyItem::JumpType::Ordinary);
 	/// Appends code to revert with a Panic(uint256) error.
@@ -200,7 +201,7 @@ public:
 	CompilerContext& appendJumpTo(
 		evmasm::AssemblyItem const& _tag,
 		evmasm::AssemblyItem::JumpType _jumpType = evmasm::AssemblyItem::JumpType::Ordinary
-	) { *m_asm << _tag.pushTag(); return appendJump(_jumpType); }
+		        ) { debug("appendJumpTo "+_tag.toAssemblyText(*m_asm)); *m_asm << _tag.pushTag(); return appendJump(_jumpType); }
 	/// Appends pushing of a new tag and @returns the new tag.
 	evmasm::AssemblyItem pushNewTag(std::string const& _description = "") { return m_asm->append(m_asm->newPushTag(_description)).tag(); }
 	/// @returns a new tag without pushing any opcodes or data

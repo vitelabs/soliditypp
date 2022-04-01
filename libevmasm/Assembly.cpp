@@ -45,6 +45,7 @@ void Assembly::appendDebugInfo(string const& _debugInfo)
     auto iter = m_debugInfos.find(pos);
     auto message = iter == m_debugInfos.end() ? _debugInfo : iter->second + "\n  // " + _debugInfo;
     m_debugInfos[pos] = message;
+    if (m_verbose) std::clog << "              [Assembly] " << _debugInfo << std::endl;
 }
 
 unsigned Assembly::bytesRequired(unsigned subTagSize) const
@@ -757,10 +758,10 @@ LinkerObject const& Assembly::assemble() const
 			subId == numeric_limits<size_t>::max() ?
 			m_tagPositionsInBytecode :
 			m_subs[subId]->m_tagPositionsInBytecode;
-		assertThrow(tagId < tagPositions.size(), AssemblyException, "Reference to non-existing tag: "+
+		assertThrow(tagId < tagPositions.size(), AssemblyException, "Reference to non-existing tag: tag_"+
 		toString(tagId));
 		size_t pos = tagPositions[tagId];
-		assertThrow(pos != numeric_limits<size_t>::max(), AssemblyException, "Reference to tag without position: "+
+		assertThrow(pos != numeric_limits<size_t>::max(), AssemblyException, "Reference to tag without position: tag_"+
 		toString(tagId));
 		assertThrow(util::bytesRequired(pos) <= bytesPerTag, AssemblyException, "Tag too large for reserved space.");
 		bytesRef r(ret.bytecode.data() + i.first, bytesPerTag);
