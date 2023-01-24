@@ -8,8 +8,8 @@ set(solidity_test_base_sources
     ${PROJECT_SOURCE_DIR}/solidity/test/libsolidity/SyntaxTest.h
     ${PROJECT_SOURCE_DIR}/solidity/test/EVMHost.cpp
     ${PROJECT_SOURCE_DIR}/solidity/test/EVMHost.h
-    # ${PROJECT_SOURCE_DIR}/solidity/test/ExecutionFramework.cpp
-    # ${PROJECT_SOURCE_DIR}/solidity/test/ExecutionFramework.h
+    ${PROJECT_SOURCE_DIR}/solidity/test/ExecutionFramework.cpp
+    ${PROJECT_SOURCE_DIR}/solidity/test/ExecutionFramework.h
     InteractiveTests.h
     ${PROJECT_SOURCE_DIR}/solidity/test/Metadata.cpp
     ${PROJECT_SOURCE_DIR}/solidity/test/Metadata.h

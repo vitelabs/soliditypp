@@ -1,7 +1,7 @@
 set(ORIGINAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/solidity/libsolutil)
 
 set(sources
-	${ORIGINAL_SOURCE_DIR}/Algorithms.h
+	Algorithms.h
 	${ORIGINAL_SOURCE_DIR}/AnsiColorized.h
 	${ORIGINAL_SOURCE_DIR}/Assertions.h
 	${ORIGINAL_SOURCE_DIR}/Common.cpp
